@@ -1,0 +1,315 @@
+.pacman-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(10px, 3vw, 30px);
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+    padding-top: 70px;
+    background-color: rgb(30, 30, 44);
+    min-height: 100vh;
+}
+
+.header-logos {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(10px, 3vw, 30px);
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.header-logo {
+    width: clamp(60px, 15vw, 120px);
+    height: auto;
+    object-fit: contain;
+}
+
+.game-title {
+    color: #FFFF00;
+    text-align: center;
+    font-size: clamp(24px, 5vw, 36px);
+    margin-bottom: clamp(15px, 4vw, 25px);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.score-panel {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: clamp(15px, 4vw, 30px);
+    padding: clamp(10px, 3vw, 15px);
+    background-color: #000053;
+    border-radius: 8px;
+    flex-wrap: wrap;
+    font-size: clamp(14px, 3vw, 18px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    color: white;
+}
+
+.score-panel p {
+    margin: 5px 10px;
+    font-weight: bold;
+}
+
+.game-canvas-container {
+    position: relative;
+    border: 4px solid #3333ff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    margin-bottom: 20px;
+    /* Make sure canvas is displayed at full size */
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    background-color: #000;
+}
+
+canvas {
+    display: block;
+    background-color: #000;
+    /* Make the game canvas display crisp pixels */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    /* Add some scaling */
+    transform: scale(1);
+    transform-origin: center center;
+}
+
+.game-canvas-container canvas {
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+  image-rendering: pixelated;
+  -ms-interpolation-mode: nearest-neighbor;
+  transform: translateZ(0); /* Force hardware acceleration */
+}
+
+.home-button {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    padding: clamp(8px, 2vw, 10px) clamp(15px, 4vw, 20px);
+    background-color: #ffcc00;
+    color: #333;
+    border: 2px solid #ff3333;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(12px, 3vw, 16px);
+}
+
+.home-button:hover {
+    background-color: #ff3333;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Game Over and Win modals */
+.game-over-overlay, .pause-overlay, .start-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.message {
+    background-color: #000053;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    border: 3px solid #FFFF00;
+    color: white;
+    width: 80%;
+    max-width: 300px;
+}
+
+.message h2 {
+    color: #FFFF00;
+    margin-top: 0;
+}
+
+button {
+    padding: clamp(10px, 2.5vw, 12px) clamp(20px, 5vw, 30px);
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: clamp(14px, 4vw, 18px);
+    margin-top: 20px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* On-screen controls */
+.controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.horizontal-controls {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin: 8px 0;
+}
+
+.control-button {
+    width: 80px;  /* Increased from 70px */
+    height: 80px; /* Increased from 70px */
+    border-radius: 50%;
+    background-color: rgba(255, 255, 0, 0.8);
+    color: #000;
+    font-size: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 0;
+    margin: 0;
+    transition: all 0.2s;
+}
+
+.control-button svg {
+    width: 50px;  /* Increased from 40px */
+    height: 50px; /* Increased from 40px */
+    fill: #000;
+}
+
+.control-button:active {
+    transform: scale(0.95);
+    background-color: rgba(255, 200, 0, 1);
+}
+
+.control-button.pause {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 60px;  /* Increased from 50px */
+    height: 60px; /* Increased from 50px */
+    font-size: 20px;
+    background-color: rgba(255, 100, 100, 0.8);
+}
+
+.control-button.pause svg {
+    width: 35px;  /* Increased from 30px */
+    height: 35px; /* Increased from 30px */
+}
+
+/* Media queries for different screen sizes */
+@media (max-width: 500px) {
+    .control-button {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .control-button svg {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+@media (min-width: 768px) {
+    .controls {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: auto;
+    }
+    
+    .horizontal-controls {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 180px; /* Increased from 160px */
+    }
+    
+    .game-canvas-container {
+        margin-right: 120px; /* Add space for controls */
+    }
+}
+
+/* Landscape mode */
+@media (max-height: 500px) and (orientation: landscape) {
+    .pacman-container {
+        padding-top: 20px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .game-title {
+        width: 100%;
+        order: -2;
+    }
+    
+    .score-panel {
+        width: 20%;
+        margin-right: 20px;
+        flex-direction: column;
+        order: -1;
+    }
+    
+    .game-canvas-container {
+        width: 70%;
+    }
+    
+    .controls {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .control-button {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .control-button svg {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .horizontal-controls {
+        width: 140px; /* Adjusted width */
+    }
+}

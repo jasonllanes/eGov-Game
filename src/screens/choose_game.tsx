@@ -1,4 +1,3 @@
-import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import './choose_game.css'
 // Import videos 
@@ -22,7 +21,7 @@ const choose_game = () => {
 
     return (
         <div className="game-selection-container  ">
-            <p className=' fixed bottom-0 mb-2 text-[#393939]'>Developed by: eGov Boyz</p>
+            <p className=' fixed bottom-0 mb-2 text-[#393939]'>Developed by: eGov Programmers</p>
             <img src={BGImage} className=' pointer-events-none mt-28 w-full object-contain absolute z-0 bottom-0' alt="" />
 
             {/* Logo Header */}
@@ -45,7 +44,7 @@ const choose_game = () => {
                         </video>
                         <span className="button-text">Game One</span>
                     </button>
-                    <Button onClick={handleGameOneClick} text="Mine eGov" />
+                    <Button onClick={handleGameOneClick} text="Mine eGov!" />
 
                 </div>
 
@@ -63,7 +62,7 @@ const choose_game = () => {
                         <span className="button-text">Game Two</span>
                     </button>
 
-                    <Button onClick={handleGameTwoClick} text="Flap eGov" />
+                    <Button onClick={handleGameTwoClick} text="Flappy Birdi'eGov" />
                 </div>
             </div>
         </div>

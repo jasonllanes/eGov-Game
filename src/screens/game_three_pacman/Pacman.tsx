@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Pacman.css';
 import eGovLogo from '../../assets/eGovLogo.png';
@@ -10,9 +10,9 @@ const PACMAN_SIZE = 22;
 const GHOST_SIZE = 22;
 const DOT_SIZE = 8;
 const POWER_DOT_SIZE = 15;
-const PACMAN_SPEED = 2.0; // Slightly reduced for better stability
-const GHOST_SPEED = 1.5; // Slightly reduced for better stability
-const GHOST_SLOWDOWN_FACTOR = 0.7; // Added for ghost turn delay
+
+
+// Added for ghost turn delay
 const DIRECTIONS = {
     UP: { x: 0, y: -1 },
     DOWN: { x: 0, y: 1 },
@@ -22,9 +22,8 @@ const DIRECTIONS = {
 };
 
 // Add this constant at the top with other constants
-const FRAME_RATE = 60; // Target 60 FPS
-const TIME_PER_FRAME = 1000 / FRAME_RATE; // Time in ms per frame
-const MOVEMENT_SMOOTHING = 0.8; // Value between 0 and 1, higher = smoother
+
+
 
 // Game map: 0 = empty, 1 = wall, 2 = dot, 3 = power dot, 4 = ghost spawn
 const INITIAL_MAP = [
@@ -216,7 +215,7 @@ function Pacman() {
         // ...
         
         // Initialize the game loop
-        animationFrameRef.current = requestAnimationFrame(updateGame);
+       
 
         return () => {
             if (animationFrameRef.current) {

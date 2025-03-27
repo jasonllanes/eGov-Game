@@ -66,13 +66,36 @@ body {
   transition: all 0.3s ease;
   flex: 1;
 }
+.game-grid {
+  max-width: 95%;
+  max-height: 70vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tile {
+  width: 60px;
+  height: 60px;
+  margin: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
 
 .tile:hover {
   background-color: #d0d0d0;
 }
 
 .tile.clicked {
-  background-color: #000000;
+  background-color: hsl(0, 0%, 100%);
 }
 
 .tile.bomb {

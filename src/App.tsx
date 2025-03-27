@@ -9,7 +9,7 @@ import { Link, Outlet } from "react-router-dom";
 import { SearchIcon } from "lucide-react";
 import NavLink from "./components/link/link";
 
-function App({ store }: any) {
+function App() {
 
 
   return (

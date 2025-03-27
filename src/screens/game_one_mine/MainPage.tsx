@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './MainPage.css';
-
+import eLGULogo from '../../assets/eLGULogo.png';
 // Import all the specified images
 import eGovLogo from '../../assets/eGovLogo.png';
 import eBPLS from '../../assets/eBPLS.png';
@@ -181,9 +181,18 @@ const MainPage = () => {
                 Home
             </button>
             <h1 className='text-white'>
-                <img src={eGovLogo} width={150} height={150} alt="eGov Logo" className="logo" />
-                Minesweeper
-            </h1>
+                <div className='flex justify-center space-x-9'>
+                    <div className="logos-container w-44 flex space-x-5 bg-[#000000] p-2 rounded-lg">
+                        <img src={eGovLogo} alt="eGov Logo" className="header-logo" />
+                    </div>
+                    <div className="logos-container w-44 flex space-x-5 bg-[#ffffff] p-2 rounded-lg">
+                        <img src={eLGULogo} alt="eLGU Logo" className="header-logo" />
+
+                    </div>
+                </div>
+
+
+            </h1 >
             <div className="score-panel">
                 <p>Score: {starCount}</p>
                 {/* <p>High Score: {highScore}</p> */}
@@ -213,33 +222,39 @@ const MainPage = () => {
                 ))}
             </div>
 
-            {showConfetti && (
-                <>
-                    <div className="confetti left"></div>
-                    <div className="confetti right"></div>
-                </>
-            )}
+            {
+                showConfetti && (
+                    <>
+                        <div className="confetti left"></div>
+                        <div className="confetti right"></div>
+                    </>
+                )
+            }
 
-            {gameOver && (
-                <div className="modal game-over">
-                    <div className="modal-content">
-                        <h2>💣 Game Over! 💣</h2>
-                        <p>You only found {starCount} Digital Platforms!</p>
-                        <button onClick={resetGame}>Play Again</button>
+            {
+                gameOver && (
+                    <div className="modal game-over">
+                        <div className="modal-content">
+                            <h2>💣 Game Over! 💣</h2>
+                            <p>You only found {starCount} Digital Platforms!</p>
+                            <button onClick={resetGame}>Play Again</button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {winner && (
-                <div className="modal winner">
-                    <div className="modal-content">
-                        <h2>You Win!</h2>
-                        <p>Congratulations! You found {starCount} Digital Platforms!</p>
-                        <button onClick={resetGame}>Play Again</button>
+            {
+                winner && (
+                    <div className="modal winner">
+                        <div className="modal-content">
+                            <h2>You Win!</h2>
+                            <p>Congratulations! You found {starCount} Digital Platforms!</p>
+                            <button onClick={resetGame}>Play Again</button>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

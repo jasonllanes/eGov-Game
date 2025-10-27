@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import './MainPage.css';
 import eLGULogo from '../../assets/eLGULogo.png';
 // Import all the specified images
-import eGovLogo from '../../assets/eGovLogo.png';
+// import eGovLogo from '../../assets/eGovLogo.png';
+import eGovLogo from '../../assets/eGovPHLogoB.png'
 import eBPLS from '../../assets/eBPLS.png';
 import eCommerce from '../../assets/eCommerce.png';
 import eGOV from '../../assets/eGOV.png';
@@ -47,6 +48,8 @@ const MainPage = () => {
     const [highScore, setHighScore] = useState(0);
     const [showConfetti, setShowConfetti] = useState(false);
     const [usedImageIndices, setUsedImageIndices] = useState<number[]>([]);
+    const [lives, setLives] = useState(2);
+    const [showLivesModal, setShowLivesModal] = useState(false);
 
     // Array of all the tile images
     const tileImages = [
@@ -107,6 +110,8 @@ const MainPage = () => {
         setWinner(false);
         setStarCount(0);
         setUsedImageIndices([]); // Reset used images when game initializes
+        setLives(2);
+        setShowLivesModal(false);
     };
 
     const getRandomUnusedImageIndex = () => {
@@ -127,13 +132,11 @@ const MainPage = () => {
     };
 
     const handleTileClick = (rowIndex: number, colIndex: number) => {
-        if (gameOver || winner || grid[rowIndex][colIndex].isClicked) {
+        if (gameOver || winner || grid[rowIndex][colIndex].isClicked || showLivesModal) {
             return;
         }
 
         const newGrid = [...grid];
-
-        // Get a random unused image index
         const randomImageIndex = getRandomUnusedImageIndex();
 
         newGrid[rowIndex][colIndex] = {
@@ -143,18 +146,18 @@ const MainPage = () => {
         };
 
         if (newGrid[rowIndex][colIndex].hasBomb) {
-            setGameOver(true);
+            if (lives > 1) {
+                setLives(lives - 1);
+                setShowLivesModal(true);
+            } else {
+                setGameOver(true);
+            }
         } else {
-            // Add this image index to used indices
             setUsedImageIndices([...usedImageIndices, randomImageIndex]);
-
-            // Show confetti for correct tile
             setShowConfetti(true);
             setTimeout(() => setShowConfetti(false), 1500);
-
             const newStarCount = starCount + 1;
             setStarCount(newStarCount);
-
             if (newStarCount >= winStarCount) {
                 setWinner(true);
                 if (newStarCount > highScore) {
@@ -163,7 +166,6 @@ const MainPage = () => {
                 }
             }
         }
-
         setGrid(newGrid);
     };
 
@@ -180,21 +182,22 @@ const MainPage = () => {
             <button className="home-button" onClick={goToHome}>
                 Home
             </button>
+            {/* <button className="restart-button" onClick={resetGame} style={{ marginLeft: '10px' }}>
+                Restart
+            </button> */}
             <h1 className='text-white'>
                 <div className='flex justify-center space-x-9'>
-                    <div className="logos-container w-44 flex space-x-5 bg-[#000000] p-2 rounded-lg">
+                    <div className="logos-container w-44 flex space-x-5 bg-[#ffffff] p-2 rounded-lg">
                         <img src={eGovLogo} alt="eGov Logo" className="header-logo" />
                     </div>
                     <div className="logos-container w-44 flex space-x-5 bg-[#ffffff] p-2 rounded-lg">
                         <img src={eLGULogo} alt="eLGU Logo" className="header-logo" />
-
                     </div>
                 </div>
-
-
             </h1 >
             <div className="score-panel">
                 <p>Score: {starCount}</p>
+                <p>Lives: {lives}</p>
                 {/* <p>High Score: {highScore}</p> */}
                 <p>Goal: {winStarCount} Digital Platforms</p>
             </div>
@@ -222,12 +225,36 @@ const MainPage = () => {
                 ))}
             </div>
 
+            {/* Show selected/correct logos below the grid */}
+            <div className="selected-logos-panel" style={{ marginTop: '24px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '12px' }}>
+                {grid.flat().filter(tile => tile.isClicked && !tile.hasBomb && typeof tile.imageIndex === 'number').map((tile, idx) => (
+                    <img
+                        key={idx}
+                        src={tileImages[tile.imageIndex!]}
+                        alt={`Selected Logo ${idx + 1}`}
+                        style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                    />
+                ))}
+            </div>
+
             {
                 showConfetti && (
                     <>
                         <div className="confetti left"></div>
                         <div className="confetti right"></div>
                     </>
+                )
+            }
+
+            {
+                showLivesModal && !gameOver && !winner && (
+                    <div className="modal lives-modal">
+                        <div className="modal-content">
+                            <h2>Oops! You hit a bomb!</h2>
+                            <p>You have {lives} {lives === 1 ? 'life' : 'lives'} left.</p>
+                            <button onClick={() => setShowLivesModal(false)}>Continue</button>
+                        </div>
+                    </div>
                 )
             }
 

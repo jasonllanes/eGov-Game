@@ -27,7 +27,7 @@
 .game-buttons-container {
     display: flex;
     gap: clamp(1rem, 3vw, 2rem); /* Responsive gap */
-    flex-wrap: wrap;
+    flex-wrap: nowrap; /* Keep in single row */
     justify-content: center;
     width: 100%;
     max-width: 1200px; /* Limit maximum width */
@@ -37,16 +37,17 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     width: 100%; /* Take full width on small screens */
-    max-width: 450px; /* Limit width on larger screens */
+    max-width: 280px; /* Smaller box size */
+    flex: 1;
 }
 
 .game-button {
     position: relative;
     width: 100%; /* Fluid width */
     height: 0;
-    padding-bottom: 100.5%; /* Maintain aspect ratio (450px/400px = 112.5%) */
+    padding-bottom: 100%; /* Square aspect ratio */
     border: none;
     border-radius: 15px;
     cursor: pointer;
@@ -66,6 +67,58 @@
 
 .game-two {
     border: 4px solid #3333ff; /* Blue theme border */
+}
+
+.game-three {
+    border: 4px solid #8e2de2; /* Purple theme border */
+}
+
+.game-four {
+    border: 4px solid #ff9900; /* Orange theme border */
+}
+
+/* Ninja button animation */
+.ninja-button-animation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(45deg, 
+            rgba(255, 255, 255, 0) 45%, 
+            rgba(255, 255, 255, 0.8) 50%, 
+            rgba(255, 255, 255, 0) 55%);
+    background-size: 200% 200%;
+    animation: ninja-slash 3s infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.dino-button-animation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('../assets/bird.png');
+    background-size: 60px;
+    background-repeat: no-repeat;
+    background-position: center;
+    animation: dino-jump 1.5s infinite ease-in-out;
+    z-index: 1;
+    pointer-events: none;
+}
+
+@keyframes ninja-slash {
+    0% { background-position: 200% 200%; }
+    100% { background-position: -200% -200%; }
+}
+
+@keyframes dino-jump {
+    0% { transform: translateY(30px); }
+    50% { transform: translateY(-30px); }
+    100% { transform: translateY(30px); }
 }
 
 .video-background {
@@ -128,13 +181,8 @@
 
 /* Media Queries for different screen sizes */
 @media (max-width: 992px) {
-    .game-buttons-container {
-        flex-direction: column;
-        align-items: center;
-    }
-    
     .game-option {
-        max-width: 400px;
+        max-width: 250px;
     }
 }
 
@@ -143,8 +191,12 @@
         margin-bottom: 2rem;
     }
     
+    .game-buttons-container {
+        flex-wrap: wrap;
+    }
+    
     .game-option {
-        max-width: 350px;
+        max-width: 220px;
     }
 }
 
@@ -153,8 +205,13 @@
         padding: 1rem;
     }
     
+    .game-buttons-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
     .game-option {
-        max-width: 300px;
+        max-width: 220px;
     }
     
     .game-button:hover {
@@ -164,7 +221,7 @@
 
 @media (max-width: 400px) {
     .game-option {
-        max-width: 100%; /* Full width on very small screens */
+        max-width: 180px; /* Smaller on very small screens */
     }
 }
 

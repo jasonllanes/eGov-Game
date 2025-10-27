@@ -19,9 +19,17 @@ const choose_game = () => {
         navigate('/eGov-Game/game-two')
     }
 
+    const handleMemoryFlipClick = () => {
+        navigate('/eGov-Game/memory-flip')
+    }
+
+    const handleDinoRunnerClick = () => {
+        navigate('/eGov-Game/dino-runner')
+    }
+
     return (
         <div className="game-selection-container  ">
-            <p className=' fixed bottom-0 mb-2 text-[#393939]'>Developed by: eGov Programmers</p>
+            <p className=' fixed bottom-0 mb-2 text-[#393939]'>Developed by: R10 eGov Programmers</p>
             <img src={BGImage} className=' pointer-events-none mt-28 w-full object-contain absolute z-0 bottom-0' alt="" />
 
             {/* Logo Header */}
@@ -33,9 +41,9 @@ const choose_game = () => {
             <h1 className="selection-title uppercase font-bold">Choose Your Game</h1>
 
             <div className="game-buttons-container">
-                <div className="game-option  flex flex-col gap-2">
+                <div className="game-option flex flex-col gap-2">
                     <button
-                        className="game-button game-one "
+                        className="game-button game-one"
                         onClick={handleGameOneClick}
                     >
                         <video className="video-background hover:scale-[1.05] ease-out duration-500" autoPlay muted loop>
@@ -45,24 +53,47 @@ const choose_game = () => {
                         <span className="button-text">Game One</span>
                     </button>
                     <Button onClick={handleGameOneClick} text="Mine eGov!" />
-
                 </div>
 
                 <div className="game-option flex flex-col gap-2">
-
-
                     <button
                         className="game-button game-two"
                         onClick={handleGameTwoClick}
                     >
-                        <video className="ideo-background hover:scale-[1.05] ease-out duration-500" autoPlay muted loop>
+                        <video className="video-background hover:scale-[1.05] ease-out duration-500" autoPlay muted loop>
                             <source src={Game2Video} type="video/mp4" />
                             Your browser does not support the video tag.
                         </video>
                         <span className="button-text">Game Two</span>
                     </button>
-
                     <Button onClick={handleGameTwoClick} text="Flappy Birdi'eGov" />
+                </div>
+
+                <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-three"
+                        onClick={handleMemoryFlipClick}
+                        style={{ background: 'linear-gradient(135deg, #4a00e0, #8e2de2)' }}
+                    >
+                        <span className="button-text">Game Three</span>
+                    </button>
+                    <Button onClick={handleMemoryFlipClick} text="Memory Flip" />
+                </div>
+
+                <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-four"
+                        onClick={handleDinoRunnerClick}
+                        style={{
+                            background: 'linear-gradient(135deg, #00a65a, #42b983)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <div className="dino-button-animation"></div>
+                        <span className="button-text">Dino Runner</span>
+                    </button>
+                    <Button onClick={handleDinoRunnerClick} text="eGov Dino Runner" />
                 </div>
             </div>
         </div>

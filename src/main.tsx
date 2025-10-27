@@ -16,6 +16,9 @@ import Loader from './components/loader/loader.tsx';
 // );
 
 
+const MemoryFlip = lazy(() =>
+  wait(1300).then(() => import("./screens/game_memory_flip/MemoryFlip.tsx"))
+);
 
 const GameTwo = lazy(() =>
   wait(1300).then(() => import("./screens/game_two_floppy/MainPageFlappyBird.tsx"))
@@ -23,6 +26,10 @@ const GameTwo = lazy(() =>
 
 const GameOne = lazy(() =>
   wait(1300).then(() => import("./screens/game_one_mine/MainPage.tsx"))
+);
+
+const DinoRunner = lazy(() =>
+  wait(1300).then(() => import("./screens/game_ninja/MainContainerDinoRunner.tsx"))
 );
 
 const MainPage = lazy(() =>
@@ -61,6 +68,23 @@ const router = createBrowserRouter([
     </>,
   },
 
+  {
+    path: "/eGov-Game/memory-flip",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <MemoryFlip />
+      </Suspense>
+    </>,
+  },
+
+  {
+    path: "/eGov-Game/dino-runner",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <DinoRunner />
+      </Suspense>
+    </>,
+  },
 
   {
     path: "*",

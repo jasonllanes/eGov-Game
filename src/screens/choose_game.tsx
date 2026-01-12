@@ -27,6 +27,10 @@ const choose_game = () => {
         navigate('/eGov-Game/dino-runner')
     }
 
+    // const handlePdfCompressorClick = () => {
+    //     navigate('/eGov-Game/pdf-compressor')
+    // }
+
     return (
         <div className="game-selection-container  ">
             <p className=' fixed bottom-0 mb-2 text-[#393939]'>Developed by: R10 eGov Programmers</p>
@@ -95,6 +99,21 @@ const choose_game = () => {
                     </button>
                     <Button onClick={handleDinoRunnerClick} text="eGov Dino Runner" />
                 </div>
+
+                {/* <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-five"
+                        onClick={handlePdfCompressorClick}
+                        style={{
+                            background: 'linear-gradient(135deg, #FF6B6B, #FF8E53)',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <span className="button-text">PDF Compressor</span>
+                    </button>
+                    <Button onClick={handlePdfCompressorClick} text="Compress PDFs" />
+                </div> */}
             </div>
         </div>
     )

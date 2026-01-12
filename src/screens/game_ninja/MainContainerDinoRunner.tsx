@@ -60,7 +60,7 @@ const MainContainerDinoRunner = () => {
         isJumping: false,
         velocityY: 0
     });
-    const [gameSpeed, setGameSpeed] = useState(2.8); // Initial game speed
+    const [gameSpeed, setGameSpeed] = useState(6.0); // Initial game speed - increased for more challenge
 
     // Collection of game images
     const gameImages = [
@@ -177,9 +177,9 @@ const MainContainerDinoRunner = () => {
                 // Increment score
                 setScore(prev => prev + 1);
 
-                // Increase game speed even more gradually
-                if (score % 500 === 0 && score > 0) {
-                    setGameSpeed(prev => Math.min(prev + 0.4, 10));
+                // Increase game speed gradually with progression
+                if (score % 300 === 0 && score > 0) {
+                    setGameSpeed(prev => Math.min(prev + 2.5, 25));
                 }
 
                 // Continue animation loop
@@ -333,7 +333,7 @@ const MainContainerDinoRunner = () => {
         setGameStarted(true);
         setGameOver(false);
         setScore(0);
-        setGameSpeed(2.5); // Even lower initial game speed for better control
+        setGameSpeed(6.0); // Initial game speed matching the state default
         setObstacles([]);
         isJumpingRef.current = false; // Reset jump state when game starts
         lastObstaclePosRef.current = -1; // Reset obstacle position tracker

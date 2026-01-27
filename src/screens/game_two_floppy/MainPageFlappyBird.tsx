@@ -60,6 +60,7 @@ const MainPageFlappyBird: React.FC = () => {
     const [velocity, setVelocity] = useState<number>(0);
     const [pipes, setPipes] = useState<Pipe[]>([{ x: gameWidth, height: Math.floor(Math.random() * 400) + 100 }]);
     const [isGameOver, setIsGameOver] = useState<boolean>(false);
+    const [gameStarted, setGameStarted] = useState<boolean>(false);
     const [score, setScore] = useState<number>(0);
     const [highScore, setHighScore] = useState<number>(0);
     const [bgPosition, setBgPosition] = useState<number>(0);
@@ -303,74 +304,87 @@ const MainPageFlappyBird: React.FC = () => {
         if (isGameOver) return;
 
         const interval = setInterval(() => {
-            setBirdY((prev) => prev + velocity);
-            setVelocity((prev) => prev + gravity);
+            // Only apply physics if game has started
+            if (gameStarted) {
+                setBirdY((prev) => prev + velocity);
+                setVelocity((prev) => prev + gravity);
+            } else {
+                // Gentle floating animation before game starts
+                const floatOffset = Math.sin(Date.now() / 200) * 2;
+                setBirdY(gameHeight / 2 + floatOffset);
+            }
 
             // Scroll the background
             setBgPosition((prev) => (prev - backgroundSpeed) % gameWidth);
 
-            setPipes((prevPipes) => {
-                // Move pipes to the left
-                const movedPipes = prevPipes.map(pipe => ({ ...pipe, x: pipe.x - pipeSpeed }));
+            // Only move pipes if game has started
+            if (gameStarted) {
+                setPipes((prevPipes) => {
+                    // Move pipes to the left
+                    const movedPipes = prevPipes.map(pipe => ({ ...pipe, x: pipe.x - pipeSpeed }));
 
-                // Filter out pipes that have gone offscreen
-                const filteredPipes = movedPipes.filter(pipe => pipe.x + pipeWidth > 0);
+                    // Filter out pipes that have gone offscreen
+                    const filteredPipes = movedPipes.filter(pipe => pipe.x + pipeWidth > 0);
 
-                // Generate a new pipe when the rightmost pipe has moved enough
-                const rightmostPipe = movedPipes.reduce((max, pipe) => pipe.x > max ? pipe.x : max, 0);
-                if (rightmostPipe < gameWidth - pipeSpacing) {
-                    return [...filteredPipes, {
-                        x: gameWidth,
-                        height: Math.floor(Math.random() * 400) + 100
-                    }];
-                }
+                    // Generate a new pipe when the rightmost pipe has moved enough
+                    const rightmostPipe = movedPipes.reduce((max, pipe) => pipe.x > max ? pipe.x : max, 0);
+                    if (rightmostPipe < gameWidth - pipeSpacing) {
+                        return [...filteredPipes, {
+                            x: gameWidth,
+                            height: Math.floor(Math.random() * 400) + 100
+                        }];
+                    }
 
-                return filteredPipes;
-            });
+                    return filteredPipes;
+                });
 
-            // Increment score when passing a pipe
-            pipes.forEach(pipe => {
-                if (pipe.x + pipeWidth < birdPositionX && pipe.x + pipeWidth > birdPositionX - pipeSpeed) {
-                    setScore(prev => {
-                        const newScore = prev + 1;
-                        // Create score confetti
-                        createScoreConfetti();
+                // Increment score when passing a pipe
+                pipes.forEach(pipe => {
+                    if (pipe.x + pipeWidth < birdPositionX && pipe.x + pipeWidth > birdPositionX - pipeSpeed) {
+                        setScore(prev => {
+                            const newScore = prev + 1;
+                            // Create score confetti
+                            createScoreConfetti();
 
-                        // Check for high score whenever score increases
-                        if (newScore > highScore) {
-                            setHighScore(newScore);
-                            localStorage.setItem(HIGH_SCORE_KEY, newScore.toString());
-                            setNewHighScore(true);
-                        }
-                        return newScore;
-                    });
-                }
-            });
+                            // Check for high score whenever score increases
+                            if (newScore > highScore) {
+                                setHighScore(newScore);
+                                localStorage.setItem(HIGH_SCORE_KEY, newScore.toString());
+                                setNewHighScore(true);
+                            }
+                            return newScore;
+                        });
+                    }
+                });
 
-            // Collision detection
-            pipes.forEach((pipe) => {
-                if (
-                    (birdY < pipe.height || birdY + birdSize > pipe.height + pipeGap) &&
-                    pipe.x < birdPositionX + birdSize / 2 &&
-                    pipe.x + pipeWidth > birdPositionX - birdSize / 2
-                ) {
+                // Collision detection
+                pipes.forEach((pipe) => {
+                    if (
+                        (birdY < pipe.height || birdY + birdSize > pipe.height + pipeGap) &&
+                        pipe.x < birdPositionX + birdSize / 2 &&
+                        pipe.x + pipeWidth > birdPositionX - birdSize / 2
+                    ) {
+                        setIsGameOver(true);
+                    }
+                });
+
+                if (birdY + birdSize > gameHeight || birdY < 0) {
                     setIsGameOver(true);
                 }
-            });
-
-            if (birdY + birdSize > gameHeight || birdY < 0) {
-                setIsGameOver(true);
             }
 
         }, gameUpdateInterval);
 
         return () => clearInterval(interval);
-    }, [velocity, isGameOver, pipes, birdY, gameWidth, gameHeight, highScore]);
+    }, [velocity, isGameOver, gameStarted, pipes, birdY, gameWidth, gameHeight, highScore]);
 
     // Handle jump
     useEffect(() => {
         const handleJump = (e: KeyboardEvent) => {
             if (e.code === "Space" && !isGameOver) {
+                if (!gameStarted) {
+                    setGameStarted(true);
+                }
                 setVelocity(jump);
                 e.preventDefault();
             }
@@ -378,7 +392,7 @@ const MainPageFlappyBird: React.FC = () => {
 
         window.addEventListener("keydown", handleJump);
         return () => window.removeEventListener("keydown", handleJump);
-    }, [isGameOver]);
+    }, [isGameOver, gameStarted]);
 
     // Canvas rendering
     useEffect(() => {
@@ -561,6 +575,7 @@ const MainPageFlappyBird: React.FC = () => {
         setVelocity(0);
         setPipes([{ x: gameWidth, height: Math.floor(Math.random() * 400) + 100 }]);
         setIsGameOver(false);
+        setGameStarted(false); // Reset game started state
         setScore(0);
         setNewHighScore(false); // Reset new high score flag
         setShowConfetti(false); // Stop high score confetti
@@ -610,7 +625,14 @@ const MainPageFlappyBird: React.FC = () => {
                     ref={canvasRef}
                     width={gameWidth}
                     height={gameHeight}
-                    onClick={() => !isGameOver && setVelocity(jump)}
+                    onClick={() => {
+                        if (!isGameOver) {
+                            if (!gameStarted) {
+                                setGameStarted(true);
+                            }
+                            setVelocity(jump);
+                        }
+                    }}
                     style={{
                         cursor: "pointer",
                         display: "block"

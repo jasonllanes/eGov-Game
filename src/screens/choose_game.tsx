@@ -3,6 +3,8 @@ import './choose_game.css'
 // Import videos 
 import Game1Video from '../assets/Game_1.mp4'
 import Game2Video from '../assets/Game_2.mp4'
+import Game3Video from '../assets/Game_3.mp4'
+import Game4Video from '../assets/Game_4.mp4'
 // Import logos
 import eGovLogo from '../assets/eGovPHLogoB.png'
 import eLGULogo from '../assets/eLGULogo.png'
@@ -77,8 +79,11 @@ const choose_game = () => {
                     <button
                         className="game-button game-three"
                         onClick={handleMemoryFlipClick}
-                        style={{ background: 'linear-gradient(135deg, #4a00e0, #8e2de2)' }}
                     >
+                        <video className="video-background hover:scale-[1.05] ease-out duration-500" autoPlay muted loop>
+                            <source src={Game3Video} type="video/mp4" />
+                            Your browser does not support the video tag.
+                        </video>
                         <span className="button-text">Game Three</span>
                     </button>
                     <Button onClick={handleMemoryFlipClick} text="Memory Flip" />
@@ -88,13 +93,11 @@ const choose_game = () => {
                     <button
                         className="game-button game-four"
                         onClick={handleDinoRunnerClick}
-                        style={{
-                            background: 'linear-gradient(135deg, #00a65a, #42b983)',
-                            position: 'relative',
-                            overflow: 'hidden'
-                        }}
                     >
-                        <div className="dino-button-animation"></div>
+                        <video className="video-background hover:scale-[1.05] ease-out duration-500" autoPlay muted loop>
+                            <source src={Game4Video} type="video/mp4" />
+                            Your browser does not support the video tag.
+                        </video>
                         <span className="button-text">Dino Runner</span>
                     </button>
                     <Button onClick={handleDinoRunnerClick} text="eGov Dino Runner" />

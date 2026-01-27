@@ -5,7 +5,9 @@ import './DinoRunner.css';
 // Import logos and assets
 import eGovLogo from '../../assets/eGovPHLogoB.png';
 import eLGULogo from '../../assets/eLGULogo.png';
-import birdImage from '../../assets/bird.png'; // Flappy bird character as dino
+// Import dino running animation frames
+import dinoFrame1 from '../../assets/dino-asset/east.png';
+import dinoFrame2 from '../../assets/dino-asset/north-east.png';
 
 // Import game logos as obstacles
 import eBPLS from '../../assets/eBPLS.png';
@@ -61,12 +63,24 @@ const MainContainerDinoRunner = () => {
         velocityY: 0
     });
     const [gameSpeed, setGameSpeed] = useState(6.0); // Initial game speed - increased for more challenge
+    const [currentDinoFrame, setCurrentDinoFrame] = useState(0); // Track animation frame (0 or 1)
 
     // Collection of game images
     const gameImages = [
         eBPLS, eCommerce, eGovChain, eGovPay, eHealth,
         eInvest, eKYC, eMessages, eTourism, eTravel
     ];
+
+    // Animate the dino running frames
+    useEffect(() => {
+        if (gameStarted && !gameOver) {
+            const animationInterval = setInterval(() => {
+                setCurrentDinoFrame(prev => prev === 0 ? 1 : 0);
+            }, 150); // Toggle every 150ms for smooth running animation
+
+            return () => clearInterval(animationInterval);
+        }
+    }, [gameStarted, gameOver]);
 
     // Initialize the game
     useEffect(() => {
@@ -337,6 +351,7 @@ const MainContainerDinoRunner = () => {
         setObstacles([]);
         isJumpingRef.current = false; // Reset jump state when game starts
         lastObstaclePosRef.current = -1; // Reset obstacle position tracker
+        setCurrentDinoFrame(0); // Reset animation to first frame
 
         // Initialize player position
         setPlayer({
@@ -447,7 +462,7 @@ const MainContainerDinoRunner = () => {
                     </div>
                 ))}
 
-                {/* Player character (flappy bird as dino) */}
+                {/* Player character (dino with running animation) */}
                 {gameStarted && !gameOver && (
                     <div
                         style={{
@@ -456,13 +471,13 @@ const MainContainerDinoRunner = () => {
                             top: `${player.y}px`, // Vertical position changes with jumping
                             width: `${player.width}px`,
                             height: `${player.height}px`,
-                            backgroundImage: `url(${birdImage})`,
+                            backgroundImage: `url(${currentDinoFrame === 0 ? dinoFrame1 : dinoFrame2})`,
                             backgroundSize: 'contain',
                             backgroundRepeat: 'no-repeat',
                             backgroundPosition: 'center',
                             zIndex: 10,
                             filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4))',
-                            transform: player.velocityY < 0 ? 'rotate(-20deg) scale(1.2)' : 'rotate(10deg) scale(1.2)' // Rotate based on jumping direction
+                            transform: player.velocityY < 0 ? 'rotate(-15deg) scale(1.2)' : 'rotate(0deg) scale(1.2)' // Slight rotation when jumping
                         }}
                     />
                 )}

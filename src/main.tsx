@@ -32,6 +32,10 @@ const DinoRunner = lazy(() =>
   wait(1300).then(() => import("./screens/game_ninja/MainContainerDinoRunner.tsx"))
 );
 
+const EGovMaze = lazy(() =>
+  wait(1300).then(() => import("./screens/game_maze/eGovMaze.tsx"))
+);
+
 const PdfCompressor = lazy(() =>
   wait(1300).then(() => import("./screens/pdf_compressor/PdfCompressor.tsx"))
 );
@@ -86,6 +90,15 @@ const router = createBrowserRouter([
     element: <>
       <Suspense fallback={<Loader />}>
         <DinoRunner />
+      </Suspense>
+    </>,
+  },
+
+  {
+    path: "/eGov-Game/egov-maze",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <EGovMaze />
       </Suspense>
     </>,
   },

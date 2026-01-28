@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import './choose_game.css'
-// Import videos 
+// Import videos / thumbnails 
 import Game1Video from '../assets/Game_1.mp4'
 import Game2Video from '../assets/Game_2.mp4'
 import Game3Video from '../assets/Game_3.mp4'
@@ -27,6 +27,10 @@ const choose_game = () => {
 
     const handleDinoRunnerClick = () => {
         navigate('/eGov-Game/dino-runner')
+    }
+
+    const handleEGovMazeClick = () => {
+        navigate('/eGov-Game/egov-maze')
     }
 
     // const handlePdfCompressorClick = () => {
@@ -101,6 +105,23 @@ const choose_game = () => {
                         <span className="button-text">Dino Runner</span>
                     </button>
                     <Button onClick={handleDinoRunnerClick} text="eGov Dino Runner" />
+                </div>
+
+                <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-five"
+                        onClick={handleEGovMazeClick}
+                    >
+                        <div className="video-background hover:scale-[1.05] ease-out duration-500 flex items-center justify-center bg-[#020617]">
+                            <img
+                                src={eGovLogo}
+                                alt="eGov Maze thumbnail"
+                                className="h-20 w-auto opacity-90"
+                            />
+                        </div>
+                        <span className="button-text">Game Five</span>
+                    </button>
+                    <Button onClick={handleEGovMazeClick} text="eGov Maze" />
                 </div>
 
                 {/* <div className="game-option flex flex-col gap-2">

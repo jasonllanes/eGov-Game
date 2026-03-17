@@ -6,6 +6,7 @@ import { Suspense, lazy } from "react";
 
 import NotFound from "./screens/notFound";
 import Loader from './components/loader/loader.tsx';
+import RouletteMainContainer from './screens/roulette/RouletteMainContainer.tsx';
 
 // const Page1= lazy(() =>
 //   wait(1300).then(() => import("./screens/page1.tsx"))
@@ -99,6 +100,15 @@ const router = createBrowserRouter([
     element: <>
       <Suspense fallback={<Loader />}>
         <EGovMaze />
+      </Suspense>
+    </>,
+  },
+
+  {
+    path: "/eGov-Game/roulette",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <RouletteMainContainer />
       </Suspense>
     </>,
   },

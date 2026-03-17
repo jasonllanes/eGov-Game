@@ -33,6 +33,10 @@ const choose_game = () => {
         navigate('/eGov-Game/egov-maze')
     }
 
+    const handleRouletteClick = () => {
+        navigate('/eGov-Game/roulette')
+    }
+
     // const handlePdfCompressorClick = () => {
     //     navigate('/eGov-Game/pdf-compressor')
     // }
@@ -110,6 +114,23 @@ const choose_game = () => {
                 <div className="game-option flex flex-col gap-2">
                     <button
                         className="game-button game-five"
+                        onClick={handleRouletteClick}
+                    >
+                        <div className="video-background hover:scale-[1.05] ease-out duration-500 flex items-center justify-center bg-[#020617]">
+                            <img
+                                src={eGovLogo}
+                                alt="eGov Maze thumbnail"
+                                className="h-20 w-auto opacity-90"
+                            />
+                        </div>
+                        <span className="button-text">Game Five</span>
+                    </button>
+                    <Button onClick={handleRouletteClick} text="eGov Roulette" />
+                </div>
+
+                {/* <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-five"
                         onClick={handleEGovMazeClick}
                     >
                         <div className="video-background hover:scale-[1.05] ease-out duration-500 flex items-center justify-center bg-[#020617]">
@@ -122,7 +143,7 @@ const choose_game = () => {
                         <span className="button-text">Game Five</span>
                     </button>
                     <Button onClick={handleEGovMazeClick} text="eGov Maze" />
-                </div>
+                </div> */}
 
                 {/* <div className="game-option flex flex-col gap-2">
                     <button

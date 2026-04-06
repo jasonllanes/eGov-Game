@@ -46,6 +46,8 @@ interface RoomState {
 
 type LocalView = 'home' | 'word-manager' | 'creating' | 'joining';
 
+interface ReactionEntry { id: string; pid: string; name: string; emoji: string; sentAt: number; }
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAIRS_KEY = 'imposter_pairs';
 const PID_KEY = 'imposter_pid';
@@ -138,6 +140,11 @@ export default function GuessImposter() {
     const [, setTick] = useState(0);
     const [highlightedCluePid, setHighlightedCluePid] = useState<string | null>(null);
     const prevCluesRef = useRef<Record<string, string>>({});
+    const [voterModalPid, setVoterModalPid] = useState<string | null>(null);
+    const [reactions, setReactions] = useState<ReactionEntry[]>([]);
+
+    const REACTION_EMOJIS = ['😂', '😱', '🤔', '👀', '🔥', '😤', '🫡', '💀'];
+    const REACTION_TTL = 4000; // ms a reaction floats before removal
 
     const playerList = Object.values(players).sort((a, b) => a.joinedAt - b.joinedAt);
     const isHost = roomState ? pid.current === roomState.hostId : false;
@@ -173,8 +180,13 @@ export default function GuessImposter() {
         const unsubClues = onValue(ref(db, `rooms/${roomCode}/clues`), snap => {
             setClues(snap.exists() ? snap.val() : {});
         });
-        unsubsRef.current = [unsubState, unsubPlayers, unsubClues];
-        return () => { unsubState(); unsubPlayers(); unsubClues(); };
+        const unsubReactions = onValue(ref(db, `rooms/${roomCode}/reactions`), snap => {
+            if (!snap.exists()) { setReactions([]); return; }
+            const entries = Object.values(snap.val()) as ReactionEntry[];
+            setReactions(entries.sort((a, b) => a.sentAt - b.sentAt));
+        });
+        unsubsRef.current = [unsubState, unsubPlayers, unsubClues, unsubReactions];
+        return () => { unsubState(); unsubPlayers(); unsubClues(); unsubReactions(); };
     }, [db, inRoom, roomCode]);
 
     useEffect(() => {
@@ -198,31 +210,46 @@ export default function GuessImposter() {
         return () => clearInterval(id);
     }, [roomState?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Host: auto-advance turn when timer expires ────────────────────────────
+    // ── Host: auto-advance turn when per-turn timer expires ──────────────────
     useEffect(() => {
         if (!db || !roomState || roomState.status !== 'discussing' || !isHost) return;
-        const { turnIdx, turnEndsAt, turnSeconds } = roomState;
-        if (turnIdx >= playerList.length) return;
+        const { turnIdx, turnEndsAt, turnSeconds, rotationCount } = roomState;
+        const totalTurns = playerList.length * rotationCount;
+        if (turnIdx >= totalTurns) return;
         const delay = Math.max(0, turnEndsAt - Date.now()) + 150;
         const t = setTimeout(async () => {
             const snap = await get(ref(db, `rooms/${roomCode}/state/turnIdx`));
             if (snap.val() !== turnIdx) return;
-            const cluePid = playerList[turnIdx]?.id;
-            if (cluePid) {
-                const clueSnap = await get(ref(db, `rooms/${roomCode}/clues/${cluePid}`));
-                if (!clueSnap.exists()) {
-                    await set(ref(db, `rooms/${roomCode}/clues/${cluePid}`), '⏱ (time ran out)');
-                }
+            const clueSnap = await get(ref(db, `rooms/${roomCode}/clues/${turnIdx}`));
+            if (!clueSnap.exists()) {
+                await set(ref(db, `rooms/${roomCode}/clues/${turnIdx}`), '⏱ (time ran out)');
             }
             const nextIdx = turnIdx + 1;
             const upd: Record<string, unknown> = { [`rooms/${roomCode}/state/turnIdx`]: nextIdx };
-            if (nextIdx < playerList.length) {
+            if (nextIdx < totalTurns) {
                 upd[`rooms/${roomCode}/state/turnEndsAt`] = Date.now() + turnSeconds * 1000;
             }
             await update(ref(db, '/'), upd);
         }, delay);
         return () => clearTimeout(t);
     }, [roomState?.turnIdx, roomState?.turnEndsAt, roomState?.status, isHost, db, roomCode, playerList.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Host: force-end discussion when overall game timer expires ────────────
+    useEffect(() => {
+        if (!db || !roomState || roomState.status !== 'discussing' || !isHost) return;
+        const { gameStartsAt, gameDurationMinutes, rotationCount } = roomState;
+        if (!gameStartsAt || gameDurationMinutes <= 0) return;
+        const totalTurns = playerList.length * rotationCount;
+        if (roomState.turnIdx >= totalTurns) return;
+        const gameEndsAt = gameStartsAt + gameDurationMinutes * 60 * 1000;
+        const delay = Math.max(0, gameEndsAt - Date.now()) + 200;
+        const t = setTimeout(async () => {
+            const snap = await get(ref(db, `rooms/${roomCode}/state/turnIdx`));
+            if ((snap.val() ?? 0) >= totalTurns) return;
+            await update(ref(db, `rooms/${roomCode}/state`), { turnIdx: totalTurns });
+        }, delay);
+        return () => clearTimeout(t);
+    }, [roomState?.gameStartsAt, roomState?.status, isHost, db, roomCode, playerList.length, roomState?.rotationCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Flash highlight when a new clue is submitted ──────────────────────────
     useEffect(() => {
@@ -342,20 +369,48 @@ export default function GuessImposter() {
 
     const submitClue = async () => {
         if (!db || !roomState) return;
-        const currentPlayer = playerList[roomState.turnIdx];
+        const totalTurns = playerList.length * roomState.rotationCount;
+        const currentPlayer = playerList[roomState.turnIdx % playerList.length];
         if (!currentPlayer || currentPlayer.id !== pid.current) return;
         const myIdx = roomState.turnIdx;
-        await set(ref(db, `rooms/${roomCode}/clues/${pid.current}`), myClue.trim() || '(skipped)');
+        await set(ref(db, `rooms/${roomCode}/clues/${myIdx}`), myClue.trim() || '(skipped)');
         setMyClue('');
         const snap = await get(ref(db, `rooms/${roomCode}/state/turnIdx`));
         if (snap.val() !== myIdx) return;
         const nextIdx = myIdx + 1;
         const upd: Record<string, unknown> = { [`rooms/${roomCode}/state/turnIdx`]: nextIdx };
-        if (nextIdx < playerList.length) {
+        if (nextIdx < totalTurns) {
             upd[`rooms/${roomCode}/state/turnEndsAt`] = Date.now() + roomState.turnSeconds * 1000;
         }
         await update(ref(db, '/'), upd);
     };
+
+    const sendReaction = async (emoji: string) => {
+        if (!db || !roomCode || !myPlayer) return;
+        const id = uid();
+        const entry: ReactionEntry = { id, pid: pid.current, name: myPlayer.name, emoji, sentAt: Date.now() };
+        await set(ref(db, `rooms/${roomCode}/reactions/${id}`), entry);
+        setTimeout(() => remove(ref(db, `rooms/${roomCode}/reactions/${id}`)), REACTION_TTL + 500);
+    };
+
+    const ReactionBar = () => (
+        <div className="gi-reaction-bar">
+            {REACTION_EMOJIS.map(e => (
+                <button key={e} className="gi-reaction-btn" onClick={() => sendReaction(e)}>{e}</button>
+            ))}
+        </div>
+    );
+
+    const ReactionOverlay = () => (
+        <div className="gi-reaction-overlay" aria-hidden>
+            {reactions.map(r => (
+                <div key={r.id} className="gi-reaction-float" style={{ left: `${(r.sentAt % 1000) / 10 + 5}%` }}>
+                    <span className="gi-reaction-emoji">{r.emoji}</span>
+                    <span className="gi-reaction-label">{r.name}</span>
+                </div>
+            ))}
+        </div>
+    );
 
     const leaveRoom = async () => {
         if (!db || !roomCode) return;
@@ -701,9 +756,10 @@ export default function GuessImposter() {
 
     // ── DISCUSSING (turn-based) ───────────────────────────────────────────────
     if (roomState.status === 'discussing') {
-        const { turnIdx, turnEndsAt, turnSeconds } = roomState;
-        const allTurnsDone = turnIdx >= playerList.length;
-        const currentPlayer = !allTurnsDone ? playerList[turnIdx] : null;
+        const { turnIdx, turnEndsAt, turnSeconds, rotationCount } = roomState;
+        const totalTurns = playerList.length * rotationCount;
+        const allTurnsDone = turnIdx >= totalTurns;
+        const currentPlayer = !allTurnsDone ? playerList[turnIdx % playerList.length] : null;
         const isMyTurn = currentPlayer?.id === pid.current;
         const timeLeft = allTurnsDone ? 0 : Math.max(0, Math.floor((turnEndsAt - Date.now()) / 1000));
         const RADIUS = 36;
@@ -780,26 +836,49 @@ export default function GuessImposter() {
                     {Object.keys(clues).length > 0 && (
                         <div className="gi-clue-list">
                             <div className="gi-clue-list-title">Clues Given</div>
-                            {playerList.filter(p => clues[p.id] !== undefined).map(p => (
-                                <div
-                                    key={p.id}
-                                    className={`gi-clue-item${highlightedCluePid === p.id ? ' gi-clue-item--new' : ''}`}
-                                >
-                                    <span className="gi-clue-player">{p.name}</span>
-                                    <span className="gi-clue-text">"{clues[p.id]}"</span>
-                                </div>
-                            ))}
+                            {Array.from({ length: turnIdx }, (_, i) => {
+                                const clueText = clues[String(i)];
+                                const player = playerList[i % playerList.length];
+                                if (!clueText || !player) return null;
+                                return (
+                                    <div
+                                        key={i}
+                                        className={`gi-clue-item${highlightedCluePid === String(i) ? ' gi-clue-item--new' : ''}`}
+                                    >
+                                        <span className="gi-clue-player">{player.name}</span>
+                                        <span className="gi-clue-text">"{clueText}"</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
-                    <div className="reveal-progress">
-                        {playerList.map((p, i) => (
-                            <div
-                                key={p.id}
-                                className={`reveal-dot${clues[p.id] !== undefined ? ' reveal-dot--done' : i === turnIdx ? ' reveal-dot--current' : ''}`}
-                            />
-                        ))}
+                    <div className="gi-turn-footer">
+                        {rotationCount > 1 && (
+                            <div className="gi-rotation-indicator">
+                                {Array.from({ length: rotationCount }, (_, r) => (
+                                    <span key={r} className={`gi-rot-dot${allTurnsDone || Math.floor(turnIdx / playerList.length) > r ? ' gi-rot-dot--done'
+                                        : Math.floor(turnIdx / playerList.length) === r ? ' gi-rot-dot--current' : ''
+                                        }`} />
+                                ))}
+                                <span className="gi-rotation-label">
+                                    {allTurnsDone ? 'All rotations done' : `Rotation ${Math.floor(turnIdx / playerList.length) + 1} / ${rotationCount}`}
+                                </span>
+                            </div>
+                        )}
+                        <div className="reveal-progress">
+                            {playerList.map((p, i) => {
+                                const posInRot = turnIdx % playerList.length;
+                                const isCurrent = !allTurnsDone && i === posInRot;
+                                const isDoneThisRot = !isCurrent && (allTurnsDone || i < posInRot);
+                                return (
+                                    <div key={p.id} className={`reveal-dot${isDoneThisRot ? ' reveal-dot--done' : isCurrent ? ' reveal-dot--current' : ''}`} />
+                                );
+                            })}
+                        </div>
                     </div>
+                    <ReactionBar />
+                    <ReactionOverlay />
                 </div>
             </div>
         );
@@ -832,6 +911,8 @@ export default function GuessImposter() {
                             <div className="gi-progress-fill" style={{ width: `${(votedCount / playerList.length) * 100}%` }} />
                         </div>
                     </div>
+                    <ReactionBar />
+                    <ReactionOverlay />
                 </div>
             </div>
         );
@@ -867,27 +948,86 @@ export default function GuessImposter() {
                         <h3 className="result-votes-title">Vote Results</h3>
                         {playerList.map(p => {
                             const count = tally[p.id] || 0;
+                            const voters = playerList.filter(v => v.vote === p.id);
                             return (
                                 <div key={p.id} className="vote-tally-row">
-                                    <span className={`tally-name${p.id === roomState.imposterPlayerId ? ' tally-name--imposter' : ''}`}>
-                                        {p.name} {p.id === roomState.imposterPlayerId ? '🕵️' : ''}
-                                    </span>
-                                    <div className="tally-bar-bg">
-                                        <div className="tally-bar" style={{ width: `${(count / Math.max(playerList.length - 1, 1)) * 100}%` }} />
+                                    <div className="tally-row-top">
+                                        <span className={`tally-name${p.id === roomState.imposterPlayerId ? ' tally-name--imposter' : ''}`}>
+                                            {p.name} {p.id === roomState.imposterPlayerId ? '🕵️' : ''}
+                                        </span>
+                                        <div className="tally-bar-bg">
+                                            <div className="tally-bar" style={{ width: `${(count / Math.max(playerList.length - 1, 1)) * 100}%` }} />
+                                        </div>
+                                        <span className="tally-count">{count}</span>
+                                        {voters.length > 0 && (
+                                            <button className="tally-voters-btn" onClick={() => setVoterModalPid(p.id)}>
+                                                {count} voted
+                                            </button>
+                                        )}
                                     </div>
-                                    <span className="tally-count">{count}</span>
                                 </div>
                             );
                         })}
                     </div>
+
+                    {/* Voter modal */}
+                    {voterModalPid && (() => {
+                        const target = players[voterModalPid];
+                        const voters = playerList.filter(v => v.vote === voterModalPid);
+                        return (
+                            <div className="gi-modal-backdrop" onClick={() => setVoterModalPid(null)}>
+                                <div className="gi-modal" onClick={e => e.stopPropagation()}>
+                                    <div className="gi-modal-title">Voted for {target?.name}</div>
+                                    <div className="gi-modal-voter-list">
+                                        {voters.map(v => (
+                                            <div key={v.id} className="gi-modal-voter-row">
+                                                <span className="gi-modal-voter-avatar">{v.name[0].toUpperCase()}</span>
+                                                <span className="gi-modal-voter-name">{v.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button className="gi-btn gi-btn--ghost" style={{ width: '100%', marginTop: '0.75rem' }} onClick={() => setVoterModalPid(null)}>Close</button>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                    {Object.keys(clues).length > 0 && (
+                        <div className="result-clue-summary">
+                            <h3 className="result-votes-title">💬 Clues Given</h3>
+                            {playerList.map(p => {
+                                const playerClues = Object.entries(clues)
+                                    .filter(([k]) => playerList[Number(k) % playerList.length]?.id === p.id)
+                                    .map(([, v]) => v);
+                                if (playerClues.length === 0) return null;
+                                return (
+                                    <div key={p.id} className="result-clue-player">
+                                        <span className="result-clue-player-name">{p.name}:</span>
+                                        <div className="result-clue-chips">
+                                            {playerClues.map((c, i) => (
+                                                <span key={i} className="result-clue-chip">"{c}"</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                     {isHost ? (
                         <div className="result-actions">
-                            <button className="gi-btn gi-btn--primary" onClick={newRound}>Play Again</button>
+                            {roomState.currentRound < roomState.roundCount ? (
+                                <button className="gi-btn gi-btn--primary" onClick={newRound}>
+                                    Next Round ({roomState.currentRound + 1} / {roomState.roundCount}) →
+                                </button>
+                            ) : (
+                                <button className="gi-btn gi-btn--primary" onClick={newRound}>Play Again</button>
+                            )}
                             <button className="gi-btn gi-btn--ghost" onClick={leaveRoom}>Close Room</button>
                         </div>
                     ) : (
                         <div className="gi-waiting-banner" style={{ marginTop: '0.5rem' }}>⏳ Waiting for host to start next round…</div>
                     )}
+                    <ReactionBar />
+                    <ReactionOverlay />
                 </div>
             </div>
         );

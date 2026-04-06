@@ -47,6 +47,7 @@ interface RoomState {
 type LocalView = 'home' | 'word-manager' | 'creating' | 'joining';
 
 interface ReactionEntry { id: string; pid: string; name: string; emoji: string; sentAt: number; }
+interface ChatMessage { id: string; pid: string; name: string; text: string; sentAt: number; }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAIRS_KEY = 'imposter_pairs';
@@ -141,7 +142,15 @@ export default function GuessImposter() {
     const [highlightedCluePid, setHighlightedCluePid] = useState<string | null>(null);
     const prevCluesRef = useRef<Record<string, string>>({});
     const [voterModalPid, setVoterModalPid] = useState<string | null>(null);
+    const [cardFlipped, setCardFlipped] = useState(false);
+    const [hasFlippedOnce, setHasFlippedOnce] = useState(false);
     const [reactions, setReactions] = useState<ReactionEntry[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatInput, setChatInput] = useState('');
+    const [unreadCount, setUnreadCount] = useState(0);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+    const lastSeenAt = useRef(0);
 
     const REACTION_EMOJIS = ['😂', '😱', '🤔', '👀', '🔥', '😤', '🫡', '💀'];
     const REACTION_TTL = 4000; // ms a reaction floats before removal
@@ -159,6 +168,14 @@ export default function GuessImposter() {
         try { const database = initFirebase(); setDb(database); }
         catch (e) { console.error('Firebase init failed:', e); }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Fetch Groq API key from Firebase config (keeps it out of the bundle) ────
+    useEffect(() => {
+        if (!db || localStorage.getItem(GEMINI_KEY)) return; // already have a key
+        get(ref(db, 'config/groqApiKey')).then(snap => {
+            if (snap.exists()) setApiKey(snap.val() as string);
+        }).catch(() => {}); // silently ignore — user can still type it manually
+    }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => () => { unsubsRef.current.forEach(fn => fn()); }, []);
 
@@ -185,8 +202,13 @@ export default function GuessImposter() {
             const entries = Object.values(snap.val()) as ReactionEntry[];
             setReactions(entries.sort((a, b) => a.sentAt - b.sentAt));
         });
-        unsubsRef.current = [unsubState, unsubPlayers, unsubClues, unsubReactions];
-        return () => { unsubState(); unsubPlayers(); unsubClues(); unsubReactions(); };
+        const unsubChat = onValue(ref(db, `rooms/${roomCode}/chat`), snap => {
+            if (!snap.exists()) { setMessages([]); return; }
+            const msgs = Object.values(snap.val()) as ChatMessage[];
+            setMessages(msgs.sort((a, b) => a.sentAt - b.sentAt));
+        });
+        unsubsRef.current = [unsubState, unsubPlayers, unsubClues, unsubReactions, unsubChat];
+        return () => { unsubState(); unsubPlayers(); unsubClues(); unsubReactions(); unsubChat(); };
     }, [db, inRoom, roomCode]);
 
     useEffect(() => {
@@ -262,8 +284,26 @@ export default function GuessImposter() {
         return () => clearTimeout(t);
     }, [clues]);
 
+    // ── Reset card flip when status leaves 'revealing' ────────────────────────
+    useEffect(() => { if (roomState?.status !== 'revealing') { setCardFlipped(false); setHasFlippedOnce(false); } }, [roomState?.status]);
+
     // ── Clear input when turn rotates ─────────────────────────────────────────
     useEffect(() => { setMyClue(''); }, [roomState?.turnIdx]);
+
+    // ── Chat: auto-scroll to bottom ───────────────────────────────────────────
+    useEffect(() => {
+        if (chatOpen) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, chatOpen]);
+
+    // ── Chat: unread badge ────────────────────────────────────────────────────
+    useEffect(() => {
+        if (chatOpen) {
+            setUnreadCount(0);
+            lastSeenAt.current = Date.now();
+        } else {
+            setUnreadCount(messages.filter(m => m.sentAt > lastSeenAt.current && m.pid !== pid.current).length);
+        }
+    }, [messages, chatOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Actions ───────────────────────────────────────────────────────────────
     const createRoom = async () => {
@@ -318,16 +358,20 @@ export default function GuessImposter() {
         if (!db || !isHost || playerList.length < 3) return;
         const pair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
         const imposterPlayerId = playerList[Math.floor(Math.random() * playerList.length)].id;
-        await update(ref(db, `rooms/${roomCode}/state`), {
-            status: 'revealing', realWord: pair.realWord,
-            imposterWord: pair.imposterWord, imposterPlayerId,
-            turnSeconds: turnSecondsConfig,
-            gameDurationMinutes: gameDurationConfig,
-            rotationCount: rotationCountConfig,
-            roundCount: roundCountConfig,
-            currentRound: 1,
-            gameStartsAt: Date.now(),
-            turnIdx: 0, turnEndsAt: 0,
+        await update(ref(db, '/'), {
+            [`rooms/${roomCode}/state/status`]: 'revealing',
+            [`rooms/${roomCode}/state/realWord`]: pair.realWord,
+            [`rooms/${roomCode}/state/imposterWord`]: pair.imposterWord,
+            [`rooms/${roomCode}/state/imposterPlayerId`]: imposterPlayerId,
+            [`rooms/${roomCode}/state/turnSeconds`]: turnSecondsConfig,
+            [`rooms/${roomCode}/state/gameDurationMinutes`]: gameDurationConfig,
+            [`rooms/${roomCode}/state/rotationCount`]: rotationCountConfig,
+            [`rooms/${roomCode}/state/roundCount`]: roundCountConfig,
+            [`rooms/${roomCode}/state/currentRound`]: 1,
+            [`rooms/${roomCode}/state/gameStartsAt`]: Date.now(),
+            [`rooms/${roomCode}/state/turnIdx`]: 0,
+            [`rooms/${roomCode}/state/turnEndsAt`]: 0,
+            [`rooms/${roomCode}/chat`]: null,
         });
     };
 
@@ -359,6 +403,7 @@ export default function GuessImposter() {
             [`rooms/${roomCode}/state/turnEndsAt`]: 0,
             [`rooms/${roomCode}/state/currentRound`]: isLastRound ? 1 : nextRound,
             [`rooms/${roomCode}/clues`]: null,
+            [`rooms/${roomCode}/chat`]: null,
         };
         playerList.forEach(p => {
             updates[`rooms/${roomCode}/players/${p.id}/hasSeenWord`] = false;
@@ -393,7 +438,7 @@ export default function GuessImposter() {
         setTimeout(() => remove(ref(db, `rooms/${roomCode}/reactions/${id}`)), REACTION_TTL + 500);
     };
 
-    const ReactionBar = () => (
+    const reactionBar = (
         <div className="gi-reaction-bar">
             {REACTION_EMOJIS.map(e => (
                 <button key={e} className="gi-reaction-btn" onClick={() => sendReaction(e)}>{e}</button>
@@ -401,7 +446,7 @@ export default function GuessImposter() {
         </div>
     );
 
-    const ReactionOverlay = () => (
+    const reactionOverlay = (
         <div className="gi-reaction-overlay" aria-hidden>
             {reactions.map(r => (
                 <div key={r.id} className="gi-reaction-float" style={{ left: `${(r.sentAt % 1000) / 10 + 5}%` }}>
@@ -409,6 +454,51 @@ export default function GuessImposter() {
                     <span className="gi-reaction-label">{r.name}</span>
                 </div>
             ))}
+        </div>
+    );
+
+    const sendMessage = async () => {
+        if (!db || !roomCode || !myPlayer || !chatInput.trim()) return;
+        const id = uid();
+        const msg: ChatMessage = { id, pid: pid.current, name: myPlayer.name, text: chatInput.trim(), sentAt: Date.now() };
+        await set(ref(db, `rooms/${roomCode}/chat/${id}`), msg);
+        setChatInput('');
+    };
+
+    const chatFAB = (
+        <button className="gi-chat-fab" onClick={() => setChatOpen(o => !o)} aria-label="Toggle chat">
+            💬
+            {unreadCount > 0 && <span className="gi-chat-fab-badge">{unreadCount}</span>}
+        </button>
+    );
+
+    const chatPanel = !chatOpen ? null : (
+        <div className="gi-chat-panel">
+            <div className="gi-chat-header">
+                <span className="gi-chat-title">💬 Room Chat</span>
+                <button className="gi-icon-btn" onClick={() => setChatOpen(false)}>✕</button>
+            </div>
+            <div className="gi-chat-messages">
+                {messages.length === 0 && <p className="gi-chat-empty">No messages yet. Say hi! 👋</p>}
+                {messages.map(m => (
+                    <div key={m.id} className={`gi-chat-msg${m.pid === pid.current ? ' gi-chat-msg--me' : ''}`}>
+                        {m.pid !== pid.current && <span className="gi-chat-msg-name">{m.name}</span>}
+                        <div className="gi-chat-msg-bubble">{m.text}</div>
+                    </div>
+                ))}
+                <div ref={chatEndRef} />
+            </div>
+            <div className="gi-chat-input-row">
+                <input
+                    className="gi-input gi-input--flex"
+                    placeholder="Message…"
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                    maxLength={200}
+                />
+                <button className="gi-btn gi-btn--primary gi-btn--sm" onClick={sendMessage}>↑</button>
+            </div>
         </div>
     );
 
@@ -698,6 +788,8 @@ export default function GuessImposter() {
                 ) : (
                     <div className="gi-waiting-banner">⏳ Waiting for host to start the game…</div>
                 )}
+                {chatFAB}
+                {chatPanel}
             </div>
         </div>
     );
@@ -723,32 +815,68 @@ export default function GuessImposter() {
                     </div>
                     <h2 className="gi-phase-title">Your Secret Word</h2>
                     <p className="gi-phase-subtitle">Private — don't show other screens!</p>
-                    {!hasSeen ? (
-                        <div className="reveal-card reveal-card--tap-me" onClick={confirmSeenWord}>
-                            <div className="reveal-card__front">
+
+                    {/* 3-D flip card */}
+                    <div className="reveal-card-wrap">
+                        <div
+                            className={`reveal-card${!hasFlippedOnce ? ' reveal-card--tap-me' : ''}${cardFlipped ? ' reveal-card--flipped' : ''}${hasSeen ? ' reveal-card--visible' : ''}`}
+                            onClick={() => {
+                                if (!hasFlippedOnce) { setHasFlippedOnce(true); setCardFlipped(true); }
+                                else setCardFlipped(f => !f);
+                            }}
+                        >
+                            {/* FRONT — hidden (tap-to-reveal) side */}
+                            <div className="reveal-card__face reveal-card__face--front">
                                 <div className="reveal-player-num">{myPlayer ? myPlayer.name[0].toUpperCase() : '?'}</div>
                                 <div className="reveal-player-name">{myPlayer?.name}</div>
                                 <div className="reveal-tap-badge">👆 Tap to reveal</div>
                                 <p className="reveal-tap-hint">Your secret word is hidden — tap to see it!</p>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="reveal-card reveal-card--visible">
-                            <div className="reveal-card__back">
+                            {/* BACK — word revealed side */}
+                            <div className="reveal-card__face reveal-card__face--back">
                                 <div className="reveal-word-label">Your word is:</div>
                                 <div className="reveal-word">{myWord}</div>
                                 <p className={`reveal-role-hint${isImposter ? ' reveal-role-hint--imposter' : ''}`}>
                                     {isImposter ? '🕵️ You are the IMPOSTER — blend in!' : '✅ Give clues without saying the word!'}
                                 </p>
+                                <p className="reveal-tap-hint" style={{ marginTop: '0.5rem' }}>👆 Tap to {hasSeen ? 'hide' : 'close'}</p>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Confirm button — shows after first flip, before Firebase confirm */}
+                    {hasFlippedOnce && !hasSeen && (
+                        <button
+                            className="gi-btn gi-btn--primary gi-btn--lg"
+                            style={{ width: '100%', maxWidth: '340px' }}
+                            onClick={confirmSeenWord}
+                        >
+                            ✅ I've seen my word — Ready!
+                        </button>
                     )}
+                    {hasSeen && (
+                        <p className="gi-hint" style={{ textAlign: 'center' }}>✔️ Confirmed! Waiting for others…</p>
+                    )}
+
+                    {/* Who has revealed */}
+                    <div className="gi-seen-players">
+                        {playerList.map(p => (
+                            <div key={p.id} className={`gi-seen-chip${p.hasSeenWord ? ' gi-seen-chip--ready' : ''}`}>
+                                <span className="gi-seen-chip-avatar">{p.name[0].toUpperCase()}</span>
+                                <span className="gi-seen-chip-name">{p.name}</span>
+                                {p.hasSeenWord ? <span className="gi-seen-chip-check">✓</span> : <span className="gi-seen-chip-wait">⋯</span>}
+                            </div>
+                        ))}
+                    </div>
+
                     <div className="gi-seen-progress">
                         <span className="gi-hint">{seenCount} / {playerList.length} players ready</span>
                         <div className="gi-progress-bar">
                             <div className="gi-progress-fill" style={{ width: `${(seenCount / playerList.length) * 100}%` }} />
                         </div>
                     </div>
+                    {chatFAB}
+                    {chatPanel}
                 </div>
             </div>
         );
@@ -836,17 +964,21 @@ export default function GuessImposter() {
                     {Object.keys(clues).length > 0 && (
                         <div className="gi-clue-list">
                             <div className="gi-clue-list-title">Clues Given</div>
-                            {Array.from({ length: turnIdx }, (_, i) => {
-                                const clueText = clues[String(i)];
-                                const player = playerList[i % playerList.length];
-                                if (!clueText || !player) return null;
+                            {playerList.map(p => {
+                                const slots = Array.from({ length: turnIdx }, (_, i) => i)
+                                    .filter(i => playerList[i % playerList.length]?.id === p.id && clues[String(i)] !== undefined);
+                                if (slots.length === 0) return null;
+                                const hasNew = slots.some(i => highlightedCluePid === String(i));
                                 return (
-                                    <div
-                                        key={i}
-                                        className={`gi-clue-item${highlightedCluePid === String(i) ? ' gi-clue-item--new' : ''}`}
-                                    >
-                                        <span className="gi-clue-player">{player.name}</span>
-                                        <span className="gi-clue-text">"{clueText}"</span>
+                                    <div key={p.id} className={`gi-clue-row${hasNew ? ' gi-clue-row--new' : ''}`}>
+                                        <span className="gi-clue-player">{p.name}</span>
+                                        <div className="gi-clue-chips">
+                                            {slots.map(i => (
+                                                <span key={i} className={`gi-clue-chip${highlightedCluePid === String(i) ? ' gi-clue-chip--new' : ''}`}>
+                                                    "{clues[String(i)]}"
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -877,8 +1009,10 @@ export default function GuessImposter() {
                             })}
                         </div>
                     </div>
-                    <ReactionBar />
-                    <ReactionOverlay />
+                    {reactionBar}
+                    {reactionOverlay}
+                    {chatFAB}
+                    {chatPanel}
                 </div>
             </div>
         );
@@ -911,8 +1045,10 @@ export default function GuessImposter() {
                             <div className="gi-progress-fill" style={{ width: `${(votedCount / playerList.length) * 100}%` }} />
                         </div>
                     </div>
-                    <ReactionBar />
-                    <ReactionOverlay />
+                    {reactionBar}
+                    {reactionOverlay}
+                    {chatFAB}
+                    {chatPanel}
                 </div>
             </div>
         );
@@ -1026,8 +1162,10 @@ export default function GuessImposter() {
                     ) : (
                         <div className="gi-waiting-banner" style={{ marginTop: '0.5rem' }}>⏳ Waiting for host to start next round…</div>
                     )}
-                    <ReactionBar />
-                    <ReactionOverlay />
+                    {reactionBar}
+                    {reactionOverlay}
+                    {chatFAB}
+                    {chatPanel}
                 </div>
             </div>
         );

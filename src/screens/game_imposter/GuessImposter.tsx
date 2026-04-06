@@ -42,6 +42,7 @@ interface RoomState {
     roundCount: number;          // total rounds
     currentRound: number;        // 1-based current round number
     gameStartsAt: number;        // ms timestamp when game started (for overall timer)
+    playerOrder: string[];       // shuffled player IDs for clue turn order
 }
 
 type LocalView = 'home' | 'word-manager' | 'creating' | 'joining';
@@ -144,6 +145,7 @@ export default function GuessImposter() {
     const [voterModalPid, setVoterModalPid] = useState<string | null>(null);
     const [cardFlipped, setCardFlipped] = useState(false);
     const [hasFlippedOnce, setHasFlippedOnce] = useState(false);
+    const [lobbyWordsOpen, setLobbyWordsOpen] = useState(false);
     const [reactions, setReactions] = useState<ReactionEntry[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [chatOpen, setChatOpen] = useState(false);
@@ -156,6 +158,9 @@ export default function GuessImposter() {
     const REACTION_TTL = 4000; // ms a reaction floats before removal
 
     const playerList = Object.values(players).sort((a, b) => a.joinedAt - b.joinedAt);
+    const orderedPlayers: Player[] = (roomState?.playerOrder?.length)
+        ? roomState.playerOrder.map(id => players[id]).filter(Boolean) as Player[]
+        : playerList;
     const isHost = roomState ? pid.current === roomState.hostId : false;
     const myPlayer = players[pid.current];
     const allSeenWord = playerList.length > 0 && playerList.every(p => p.hasSeenWord);
@@ -213,10 +218,12 @@ export default function GuessImposter() {
 
     useEffect(() => {
         if (!db || !roomState || roomState.status !== 'revealing' || !isHost || !allSeenWord) return;
+        const shuffled = [...playerList.map(p => p.id)].sort(() => Math.random() - 0.5);
         update(ref(db, `rooms/${roomCode}/state`), {
             status: 'discussing',
             turnIdx: 0,
             turnEndsAt: Date.now() + roomState.turnSeconds * 1000,
+            playerOrder: shuffled,
         });
     }, [allSeenWord, roomState?.status, isHost, db, roomCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -236,7 +243,7 @@ export default function GuessImposter() {
     useEffect(() => {
         if (!db || !roomState || roomState.status !== 'discussing' || !isHost) return;
         const { turnIdx, turnEndsAt, turnSeconds, rotationCount } = roomState;
-        const totalTurns = playerList.length * rotationCount;
+        const totalTurns = orderedPlayers.length * rotationCount;
         if (turnIdx >= totalTurns) return;
         const delay = Math.max(0, turnEndsAt - Date.now()) + 150;
         const t = setTimeout(async () => {
@@ -318,7 +325,7 @@ export default function GuessImposter() {
                 realWord: '', imposterWord: '', imposterPlayerId: '', createdAt: now,
                 turnIdx: 0, turnEndsAt: 0, turnSeconds: 30,
                 gameDurationMinutes: 10, rotationCount: 1, roundCount: 3,
-                currentRound: 1, gameStartsAt: 0,
+                currentRound: 1, gameStartsAt: 0, playerOrder: [],
             };
             const me: Player = {
                 id: pid.current, name: createName.trim(), joinedAt: now,
@@ -358,6 +365,8 @@ export default function GuessImposter() {
         if (!db || !isHost || playerList.length < 3) return;
         const pair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
         const imposterPlayerId = playerList[Math.floor(Math.random() * playerList.length)].id;
+        // remove the played pair so it won't repeat
+        setWordPairs(prev => prev.filter(p => p.id !== pair.id));
         await update(ref(db, '/'), {
             [`rooms/${roomCode}/state/status`]: 'revealing',
             [`rooms/${roomCode}/state/realWord`]: pair.realWord,
@@ -414,8 +423,8 @@ export default function GuessImposter() {
 
     const submitClue = async () => {
         if (!db || !roomState) return;
-        const totalTurns = playerList.length * roomState.rotationCount;
-        const currentPlayer = playerList[roomState.turnIdx % playerList.length];
+        const totalTurns = orderedPlayers.length * roomState.rotationCount;
+        const currentPlayer = orderedPlayers[roomState.turnIdx % orderedPlayers.length];
         if (!currentPlayer || currentPlayer.id !== pid.current) return;
         const myIdx = roomState.turnIdx;
         await set(ref(db, `rooms/${roomCode}/clues/${myIdx}`), myClue.trim() || '(skipped)');
@@ -784,6 +793,36 @@ export default function GuessImposter() {
                         >
                             {playerList.length < 3 ? `Need ${3 - playerList.length} more player${3 - playerList.length !== 1 ? 's' : ''}` : 'Start Game →'}
                         </button>
+
+                        {/* Inline word manager */}
+                        <button
+                            className="gi-btn gi-btn--ghost"
+                            style={{ width: '100%', marginTop: '0.25rem' }}
+                            onClick={() => setLobbyWordsOpen(o => !o)}
+                        >
+                            📝 Words ({wordPairs.length}) {lobbyWordsOpen ? '▲' : '▼'}
+                        </button>
+                        {lobbyWordsOpen && (
+                            <div className="gi-lobby-words">
+                                <div className="wm-add-form">
+                                    <input className="gi-input gi-input--flex" placeholder="Real word" value={newReal} onChange={e => setNewReal(e.target.value)} onKeyDown={e => e.key === 'Enter' && addPair()} />
+                                    <span className="wm-vs">⇄</span>
+                                    <input className="gi-input gi-input--flex" placeholder="Imposter word" value={newImposter} onChange={e => setNewImposter(e.target.value)} onKeyDown={e => e.key === 'Enter' && addPair()} />
+                                    <button className="gi-btn gi-btn--primary gi-btn--sm" onClick={addPair}>Add</button>
+                                </div>
+                                <div className="wm-list">
+                                    {wordPairs.length === 0 && <p className="wm-empty">No pairs yet — add some above!</p>}
+                                    {wordPairs.map(pair => (
+                                        <div key={pair.id} className="wm-pair-row">
+                                            <span className="wm-real">{pair.realWord}</span>
+                                            <span className="wm-arrow">⇄</span>
+                                            <span className="wm-imposter">{pair.imposterWord}</span>
+                                            <button className="wm-delete-btn" onClick={() => setWordPairs(p => p.filter(x => x.id !== pair.id))}>✕</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </>
                 ) : (
                     <div className="gi-waiting-banner">⏳ Waiting for host to start the game…</div>
@@ -885,9 +924,9 @@ export default function GuessImposter() {
     // ── DISCUSSING (turn-based) ───────────────────────────────────────────────
     if (roomState.status === 'discussing') {
         const { turnIdx, turnEndsAt, turnSeconds, rotationCount } = roomState;
-        const totalTurns = playerList.length * rotationCount;
+        const totalTurns = orderedPlayers.length * rotationCount;
         const allTurnsDone = turnIdx >= totalTurns;
-        const currentPlayer = !allTurnsDone ? playerList[turnIdx % playerList.length] : null;
+        const currentPlayer = !allTurnsDone ? orderedPlayers[turnIdx % orderedPlayers.length] : null;
         const isMyTurn = currentPlayer?.id === pid.current;
         const timeLeft = allTurnsDone ? 0 : Math.max(0, Math.floor((turnEndsAt - Date.now()) / 1000));
         const RADIUS = 36;
@@ -966,7 +1005,7 @@ export default function GuessImposter() {
                             <div className="gi-clue-list-title">Clues Given</div>
                             {playerList.map(p => {
                                 const slots = Array.from({ length: turnIdx }, (_, i) => i)
-                                    .filter(i => playerList[i % playerList.length]?.id === p.id && clues[String(i)] !== undefined);
+                                    .filter(i => orderedPlayers[i % orderedPlayers.length]?.id === p.id && clues[String(i)] !== undefined);
                                 if (slots.length === 0) return null;
                                 const hasNew = slots.some(i => highlightedCluePid === String(i));
                                 return (
@@ -999,8 +1038,8 @@ export default function GuessImposter() {
                             </div>
                         )}
                         <div className="reveal-progress">
-                            {playerList.map((p, i) => {
-                                const posInRot = turnIdx % playerList.length;
+                            {orderedPlayers.map((p, i) => {
+                                const posInRot = turnIdx % orderedPlayers.length;
                                 const isCurrent = !allTurnsDone && i === posInRot;
                                 const isDoneThisRot = !isCurrent && (allTurnsDone || i < posInRot);
                                 return (

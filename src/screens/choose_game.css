@@ -77,6 +77,14 @@
     border: 4px solid #ff9900; /* Orange theme border */
 }
 
+.game-five {
+    border: 4px solid #22c55e; /* Green theme border */
+}
+
+.game-six {
+    border: 4px solid #a855f7; /* Purple/violet theme border */
+}
+
 /* Ninja button animation */
 .ninja-button-animation {
     position: absolute;

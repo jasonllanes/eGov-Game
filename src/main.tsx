@@ -41,6 +41,10 @@ const PdfCompressor = lazy(() =>
   wait(1300).then(() => import("./screens/pdf_compressor/PdfCompressor.tsx"))
 );
 
+const GuessImposter = lazy(() =>
+  wait(1300).then(() => import("./screens/game_imposter/GuessImposter.tsx"))
+);
+
 const MainPage = lazy(() =>
   wait(2300).then(() => import("./screens/choose_game.tsx"))
 );
@@ -109,6 +113,15 @@ const router = createBrowserRouter([
     element: <>
       <Suspense fallback={<Loader />}>
         <RouletteMainContainer />
+      </Suspense>
+    </>,
+  },
+
+  {
+    path: "/eGov-Game/guess-imposter",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <GuessImposter />
       </Suspense>
     </>,
   },

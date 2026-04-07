@@ -41,6 +41,10 @@ const choose_game = () => {
         navigate('/eGov-Game/guess-imposter')
     }
 
+    const handleSkribblClick = () => {
+        navigate('/eGov-Game/skribbl')
+    }
+
     // const handlePdfCompressorClick = () => {
     //     navigate('/eGov-Game/pdf-compressor')
     // }
@@ -143,6 +147,19 @@ const choose_game = () => {
                         <span className="button-text">Game Six</span>
                     </button>
                     <Button onClick={handleGuessImposterClick} text="Guess the Imposter" />
+                </div>
+
+                <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-seven"
+                        onClick={handleSkribblClick}
+                    >
+                        <div className="video-background hover:scale-[1.05] ease-out duration-500 flex items-center justify-center bg-[#0f1e2e]">
+                            <span style={{ fontSize: '3.5rem' }}>🎨</span>
+                        </div>
+                        <span className="button-text">Game Seven</span>
+                    </button>
+                    <Button onClick={handleSkribblClick} text="eGov Skribbl" />
                 </div>
 
                 {/* <div className="game-option flex flex-col gap-2">

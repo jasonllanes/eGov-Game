@@ -45,6 +45,10 @@ const GuessImposter = lazy(() =>
   wait(1300).then(() => import("./screens/game_imposter/GuessImposter.tsx"))
 );
 
+const Skribbl = lazy(() =>
+  wait(1300).then(() => import("./screens/game_skribbl/Skribbl.tsx"))
+);
+
 const MainPage = lazy(() =>
   wait(2300).then(() => import("./screens/choose_game.tsx"))
 );
@@ -131,6 +135,15 @@ const router = createBrowserRouter([
     element: <>
       <Suspense fallback={<Loader />}>
         <PdfCompressor />
+      </Suspense>
+    </>,
+  },
+
+  {
+    path: "/eGov-Game/skribbl",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <Skribbl />
       </Suspense>
     </>,
   },

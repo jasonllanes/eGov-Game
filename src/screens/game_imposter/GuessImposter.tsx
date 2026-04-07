@@ -43,6 +43,7 @@ interface RoomState {
     currentRound: number;        // 1-based current round number
     gameStartsAt: number;        // ms timestamp when game started (for overall timer)
     playerOrder: string[];       // shuffled player IDs for clue turn order
+    showHint: boolean;           // whether to show role hint on reveal card
 }
 
 type LocalView = 'home' | 'word-manager' | 'creating' | 'joining';
@@ -140,6 +141,7 @@ export default function GuessImposter() {
     const [gameDurationConfig, setGameDurationConfig] = useState(10); // minutes
     const [rotationCountConfig, setRotationCountConfig] = useState(1);
     const [roundCountConfig, setRoundCountConfig] = useState(3);
+    const [showHintConfig, setShowHintConfig] = useState(true);
     const [, setTick] = useState(0);
     const [highlightedCluePid, setHighlightedCluePid] = useState<string | null>(null);
     const prevCluesRef = useRef<Record<string, string>>({});
@@ -326,7 +328,7 @@ export default function GuessImposter() {
                 realWord: '', imposterWord: '', imposterPlayerId: '', createdAt: now,
                 turnIdx: 0, turnEndsAt: 0, turnSeconds: 30,
                 gameDurationMinutes: 10, rotationCount: 1, roundCount: 3,
-                currentRound: 1, gameStartsAt: 0, playerOrder: [],
+                currentRound: 1, gameStartsAt: 0, playerOrder: [], showHint: true,
             };
             const me: Player = {
                 id: pid.current, name: createName.trim(), joinedAt: now,
@@ -377,6 +379,7 @@ export default function GuessImposter() {
             [`rooms/${roomCode}/state/gameDurationMinutes`]: gameDurationConfig,
             [`rooms/${roomCode}/state/rotationCount`]: rotationCountConfig,
             [`rooms/${roomCode}/state/roundCount`]: roundCountConfig,
+            [`rooms/${roomCode}/state/showHint`]: showHintConfig,
             [`rooms/${roomCode}/state/currentRound`]: 1,
             [`rooms/${roomCode}/state/gameStartsAt`]: Date.now(),
             [`rooms/${roomCode}/state/turnIdx`]: 0,
@@ -805,6 +808,15 @@ export default function GuessImposter() {
                                     <button className="gi-icon-btn" onClick={() => setRoundCountConfig(s => Math.min(10, s + 1))}>+</button>
                                 </div>
                             </div>
+                            <div className="gi-turn-config gi-turn-config--toggle">
+                                <span className="gi-turn-config-label">💡 Role hint</span>
+                                <button
+                                    className={`gi-toggle-btn${showHintConfig ? ' gi-toggle-btn--on' : ''}`}
+                                    onClick={() => setShowHintConfig(v => !v)}
+                                >
+                                    {showHintConfig ? 'ON' : 'OFF'}
+                                </button>
+                            </div>
                         </div>
                         <button
                             className="gi-btn gi-btn--primary gi-btn--lg"
@@ -913,7 +925,10 @@ export default function GuessImposter() {
                                 <div className="reveal-word-label">Your word is:</div>
                                 <div className="reveal-word">{myWord}</div>
                                 <p className={`reveal-role-hint${isImposter ? ' reveal-role-hint--imposter' : ''}`}>
-                                    {isImposter ? '🕵️ You are the IMPOSTER — blend in!' : '✅ Give clues without saying the word!'}
+                                    {roomState.showHint !== false
+                                        ? (isImposter ? '🕵️ You are the IMPOSTER — blend in!' : '✅ Give clues without saying the word!')
+                                        : '🤫 Figure it out yourself!'
+                                    }
                                 </p>
                                 <p className="reveal-tap-hint" style={{ marginTop: '0.5rem' }}>👆 Tap to {hasSeen ? 'hide' : 'close'}</p>
                             </div>

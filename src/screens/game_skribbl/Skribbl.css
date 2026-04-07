@@ -518,6 +518,64 @@ select.sk-input option { background: #1a1e2e; color: #fff; }
 .sk-chat-input::placeholder { color: rgba(255,255,255,0.25); }
 .sk-chat-input:disabled { opacity: 0.4; }
 
+/* ─── Reaction bar ───────────────────────────────────────────────────────────── */
+.sk-reaction-bar {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    flex-wrap: wrap;
+}
+.sk-reaction-btn {
+    font-size: 1.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.15rem 0.2rem;
+    border-radius: 8px;
+    transition: transform 0.15s, background 0.15s;
+    line-height: 1;
+}
+.sk-reaction-btn:hover  { background: rgba(255,255,255,0.08); transform: scale(1.3); }
+.sk-reaction-btn:active { transform: scale(0.9); }
+
+/* ─── Floating reaction overlay ─────────────────────────────────────────────── */
+.sk-reaction-overlay {
+    position: fixed;
+    bottom: 5rem;
+    left: 0; right: 0;
+    pointer-events: none;
+    overflow: hidden;
+    height: 50vh;
+    z-index: 500;
+}
+.sk-reaction-float {
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    animation: sk-reaction-rise 4s ease-out forwards;
+}
+.sk-reaction-emoji { font-size: 2rem; line-height: 1; }
+.sk-reaction-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    background: rgba(0,0,0,0.4);
+    border-radius: 8px;
+    padding: 0.1rem 0.35rem;
+    white-space: nowrap;
+}
+@keyframes sk-reaction-rise {
+    0%   { transform: translateY(0)   scale(0.6); opacity: 0; }
+    10%  { transform: translateY(-20px) scale(1.2); opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(-260px) scale(0.9); opacity: 0; }
+}
+
 /* ─── Word Choice Overlay ─────────────────────────────────────────────────────── */
 .sk-overlay {
     position: absolute;

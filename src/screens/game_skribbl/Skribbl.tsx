@@ -48,6 +48,14 @@ interface GuessMsg {
     sentAt: number;
 }
 
+interface ReactionEntry {
+    id: string;
+    pid: string;
+    name: string;
+    emoji: string;
+    sentAt: number;
+}
+
 interface RoomState {
     status: 'lobby' | 'choosing' | 'drawing' | 'round-end' | 'results';
     hostId: string;
@@ -186,7 +194,8 @@ function initFirebase(): Database {
 }
 
 // ─── Avatar SVG ────────────────────────────────────────────────────────────────
-function AvatarSVG({ avatar, size = 56 }: { avatar: Avatar; size?: number }) {
+function AvatarSVG({ avatar: avatarProp, size = 56 }: { avatar?: Avatar; size?: number }) {
+    const avatar: Avatar = avatarProp ?? { color: AVATAR_COLORS[0], eyes: 0, mouth: 0 };
     const eyeShapes = [
         // dots
         <><circle cx="19" cy="22" r="3" fill="#111" /><circle cx="37" cy="22" r="3" fill="#111" /></>,
@@ -241,7 +250,11 @@ export default function Skribbl() {
     const [strokes, setStrokes] = useState<Stroke[]>([]);
     const [guessInput, setGuessInput] = useState('');
     const [hasGuessedThisTurn, setHasGuessedThisTurn] = useState(false);
+    const [reactions, setReactions] = useState<ReactionEntry[]>([]);
     const [, setTick] = useState(0);
+
+    const REACTION_EMOJIS = ['😂', '😱', '🤔', '👀', '🔥', '😤', '🫡', '💀'];
+    const REACTION_TTL = 4000;
     const [copied, setCopied] = useState(false);
     const [language, setLanguage] = useState<'english' | 'bisaya'>('english');
 
@@ -317,9 +330,14 @@ export default function Skribbl() {
                 setStrokes(parsed);
             } catch { setStrokes([]); }
         });
+        const u5 = onValue(ref(db, `${base}/reactions`), snap => {
+            if (!snap.exists()) { setReactions([]); return; }
+            const entries = Object.values(snap.val()) as ReactionEntry[];
+            setReactions(entries.sort((a, b) => a.sentAt - b.sentAt));
+        });
 
-        unsubsRef.current.push(u1, u2, u3, u4);
-        return () => { u1(); u2(); u3(); u4(); };
+        unsubsRef.current.push(u1, u2, u3, u4, u5);
+        return () => { u1(); u2(); u3(); u4(); u5(); };
     }, [db, roomCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─────────────────────────────────────────────────────────────
@@ -340,6 +358,18 @@ export default function Skribbl() {
             endTurn();
         }
     }, [roomState?.game?.turnEndsAt, roomState?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ─────────────────────────────────────────────────────────────
+    //  HOST: end turn when ALL non-drawers have guessed
+    // ─────────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (!roomState || !db) return;
+        if (roomState.hostId !== pid.current) return;
+        if (roomState.status !== 'drawing') return;
+        const nonDrawers = Object.values(players).filter(p => p.id !== roomState.game.currentDrawerId);
+        if (nonDrawers.length === 0) return;
+        if (nonDrawers.every(p => p.hasGuessed)) endTurn();
+    }, [players]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─────────────────────────────────────────────────────────────
     //  HOST: auto-advance from round-end after 5s
@@ -685,11 +715,15 @@ export default function Skribbl() {
                     score: (drawer.score ?? 0) + 50,
                 });
             }
-            // Check if everyone has guessed
-            const nonDrawers = Object.values(players).filter(p => p.id !== roomState.game.currentDrawerId);
-            const allGuessed = nonDrawers.every(p => p.hasGuessed || p.id === pid.current);
-            if (allGuessed && isHost) endTurn();
         }
+    }
+
+    async function sendReaction(emoji: string) {
+        if (!db || !roomCode) return;
+        const id = uid();
+        const entry: ReactionEntry = { id, pid: pid.current, name: players[pid.current]?.name ?? 'Me', emoji, sentAt: Date.now() };
+        await set(ref(db, `skribbl-rooms/${roomCode}/reactions/${id}`), entry);
+        setTimeout(() => remove(ref(db, `skribbl-rooms/${roomCode}/reactions/${id}`)), REACTION_TTL + 500);
     }
 
     async function updateSettings(field: string, val: number | string) {
@@ -1066,6 +1100,16 @@ export default function Skribbl() {
                     )}
                 </div>
 
+                {/* REACTION OVERLAY */}
+                <div className="sk-reaction-overlay" aria-hidden>
+                    {reactions.map(r => (
+                        <div key={r.id} className="sk-reaction-float" style={{ left: `${(r.sentAt % 1000) / 10 + 5}%` }}>
+                            <span className="sk-reaction-emoji">{r.emoji}</span>
+                            <span className="sk-reaction-label">{r.name}</span>
+                        </div>
+                    ))}
+                </div>
+
                 {/* CHAT / GUESS PANEL */}
                 <div className="sk-chat-panel">
                     <div className="sk-chat-messages">
@@ -1095,6 +1139,11 @@ export default function Skribbl() {
                             onKeyDown={e => e.key === 'Enter' && sendGuess()}
                         />
                         <button className="sk-btn sk-btn--primary sk-btn--sm" disabled={isDrawer || roomState.status !== 'drawing'} onClick={sendGuess}>→</button>
+                    </div>
+                    <div className="sk-reaction-bar">
+                        {REACTION_EMOJIS.map(e => (
+                            <button key={e} className="sk-reaction-btn" onClick={() => sendReaction(e)}>{e}</button>
+                        ))}
                     </div>
                 </div>
 

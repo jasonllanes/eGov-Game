@@ -53,7 +53,7 @@ interface ChatMessage { id: string; pid: string; name: string; text: string; sen
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PAIRS_KEY = 'imposter_pairs';
 const PID_KEY = 'imposter_pid';
-const GEMINI_KEY = 'imposter_gemini_key';
+const GROQ_KEY = 'imposter_groq_key';
 
 const DEFAULT_PAIRS: WordPair[] = [
     { id: 'dp1', realWord: 'Apple', imposterWord: 'Pear' },
@@ -128,10 +128,11 @@ export default function GuessImposter() {
     });
     const [newReal, setNewReal] = useState('');
     const [newImposter, setNewImposter] = useState('');
-    const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_KEY) || '');
+    const [apiKey, setApiKey] = useState(() => localStorage.getItem(GROQ_KEY) || '');
     const [aiLoading, setAiLoading] = useState(false);
     const [aiError, setAiError] = useState('');
     const [aiCount, setAiCount] = useState(5);
+    const [aiLanguage, setAiLanguage] = useState<'english' | 'bisaya'>('english');
 
     const [clues, setClues] = useState<Record<string, string>>({});
     const [myClue, setMyClue] = useState('');
@@ -176,10 +177,10 @@ export default function GuessImposter() {
 
     // ── Fetch Groq API key from Firebase config (keeps it out of the bundle) ────
     useEffect(() => {
-        if (!db || localStorage.getItem(GEMINI_KEY)) return; // already have a key
+        if (!db || localStorage.getItem(GROQ_KEY)) return; // already have a key
         get(ref(db, 'config/groqApiKey')).then(snap => {
             if (snap.exists()) setApiKey(snap.val() as string);
-        }).catch(() => {}); // silently ignore — user can still type it manually
+        }).catch(() => { }); // silently ignore — user can still type it manually
     }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => () => { unsubsRef.current.forEach(fn => fn()); }, []);
@@ -533,7 +534,23 @@ export default function GuessImposter() {
         if (!apiKey.trim()) { setAiError('Enter a Groq API key.'); return; }
         setAiLoading(true); setAiError('');
         try {
-            const prompt = `Generate ${aiCount} word pairs for a "Guess the Imposter" party game.\nRules:\n- "realWord" is what most players receive\n- "imposterWord" is a DIFFERENT but closely related word in the same category (NOT a spelling variant, NOT the same word misspelled)\n- Both words must be real, common English words\n- They should be close enough that clues overlap but different enough to eventually expose the imposter\n- Good examples: {realWord:"beach", imposterWord:"lake"}, {realWord:"guitar", imposterWord:"violin"}, {realWord:"lion", imposterWord:"tiger"}, {realWord:"coffee", imposterWord:"tea"}\n- Bad examples (do NOT do this): {realWord:"knight", imposterWord:"nite"}, {realWord:"cloud", imposterWord:"clowd"}\nReturn ONLY a valid JSON array, no markdown, no explanation: [{"realWord":"...","imposterWord":"..."},...]`;
+            // Build list of existing words to avoid duplicates
+            const existingWords = new Set<string>();
+            wordPairs.forEach(pair => {
+                existingWords.add(pair.realWord.toLowerCase());
+                existingWords.add(pair.imposterWord.toLowerCase());
+            });
+            const existingList = Array.from(existingWords).join(', ');
+            const avoidanceNote = existingWords.size > 0
+                ? `\n- IMPORTANT: Do NOT use any of these words that already exist: ${existingList}\n- Generate completely NEW and DIFFERENT word pairs`
+                : '';
+
+            let prompt = '';
+            if (aiLanguage === 'bisaya') {
+                prompt = `Generate ${aiCount} word pairs for a "Guess the Imposter" party game in BISAYA/CEBUANO language.\nRules:\n- "realWord" is what most players receive\n- "imposterWord" is a DIFFERENT but closely related word in the same category (NOT a spelling variant, NOT the same word misspelled)\n- Both words must be real, common BISAYA/CEBUANO words\n- They should be close enough that clues overlap but different enough to eventually expose the imposter\n- Good examples: {realWord:"dagat", imposterWord:"suba"}, {realWord:"iro", imposterWord:"iring"}, {realWord:"buwan", imposterWord:"adlaw"}, {realWord:"lutaw", imposterWord:"tubig"}\n- Bad examples (do NOT do this): {realWord:"katre", imposterWord:"katre"}, similar spelling variations${avoidanceNote}\nReturn ONLY a valid JSON array, no markdown, no explanation: [{"realWord":"...","imposterWord":"..."},...]`;
+            } else {
+                prompt = `Generate ${aiCount} word pairs for a "Guess the Imposter" party game.\nRules:\n- "realWord" is what most players receive\n- "imposterWord" is a DIFFERENT but closely related word in the same category (NOT a spelling variant, NOT the same word misspelled)\n- Both words must be real, common English words\n- They should be close enough that clues overlap but different enough to eventually expose the imposter\n- Good examples: {realWord:"beach", imposterWord:"lake"}, {realWord:"guitar", imposterWord:"violin"}, {realWord:"lion", imposterWord:"tiger"}, {realWord:"coffee", imposterWord:"tea"}\n- Bad examples (do NOT do this): {realWord:"knight", imposterWord:"nite"}, {realWord:"cloud", imposterWord:"clowd"}${avoidanceNote}\nReturn ONLY a valid JSON array, no markdown, no explanation: [{"realWord":"...","imposterWord":"..."},...]`;
+            }
             const res = await fetch(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
@@ -542,7 +559,7 @@ export default function GuessImposter() {
                     body: JSON.stringify({
                         model: 'llama-3.3-70b-versatile',
                         messages: [{ role: 'user', content: prompt }],
-                        temperature: 0.8,
+                        temperature: 0.9,
                     }),
                 }
             );
@@ -554,7 +571,7 @@ export default function GuessImposter() {
             const pairs = JSON.parse(match[0]) as { realWord: string; imposterWord: string }[];
             const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
             setWordPairs(prev => [...prev, ...pairs.map(p => ({ id: uid(), realWord: cap(p.realWord), imposterWord: cap(p.imposterWord) }))]);
-            localStorage.setItem(GEMINI_KEY, apiKey);
+            localStorage.setItem(GROQ_KEY, apiKey);
         } catch (e) {
             setAiError(e instanceof Error ? e.message : 'Failed to generate.');
         } finally { setAiLoading(false); }
@@ -687,8 +704,12 @@ export default function GuessImposter() {
                     <button className="gi-btn gi-btn--primary gi-btn--sm" onClick={addPair}>Add</button>
                 </div>
                 <div className="wm-ai-section">
-                    <div className="wm-ai-label">✨ AI Generate (Gemini)</div>
+                    <div className="wm-ai-label">✨ AI Generate (Groq)</div>
                     <div className="wm-ai-controls">
+                        <select className="gi-input" value={aiLanguage} onChange={e => setAiLanguage(e.target.value as 'english' | 'bisaya')} style={{ width: 'auto' }}>
+                            <option value="english">English</option>
+                            <option value="bisaya">Bisaya</option>
+                        </select>
                         <input className="gi-input gi-input--flex" type="password" placeholder="Groq API key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
                         <input className="gi-input gi-input--num" type="number" min={1} max={20} value={aiCount} onChange={e => setAiCount(Math.max(1, Math.min(20, Number(e.target.value))))} />
                         <button className="gi-btn gi-btn--ai" onClick={generateWithAI} disabled={aiLoading}>
@@ -696,7 +717,7 @@ export default function GuessImposter() {
                         </button>
                     </div>
                     {aiError && <p className="gi-error">{aiError}</p>}
-                    <p className="gi-hint">Get a free key at <span className="gi-hint-strong">aistudio.google.com</span></p>
+                    <p className="gi-hint">Get a free key at <span className="gi-hint-strong">console.groq.com</span></p>
                 </div>
                 <div className="wm-list">
                     {wordPairs.length === 0 && <p className="wm-empty">No pairs yet.</p>}
@@ -809,6 +830,22 @@ export default function GuessImposter() {
                                     <span className="wm-vs">⇄</span>
                                     <input className="gi-input gi-input--flex" placeholder="Imposter word" value={newImposter} onChange={e => setNewImposter(e.target.value)} onKeyDown={e => e.key === 'Enter' && addPair()} />
                                     <button className="gi-btn gi-btn--primary gi-btn--sm" onClick={addPair}>Add</button>
+                                </div>
+                                <div className="wm-ai-section">
+                                    <div className="wm-ai-label">✨ AI Generate (Groq)</div>
+                                    <div className="wm-ai-controls">
+                                        <select className="gi-input" value={aiLanguage} onChange={e => setAiLanguage(e.target.value as 'english' | 'bisaya')} style={{ width: 'auto' }}>
+                                            <option value="english">English</option>
+                                            <option value="bisaya">Bisaya</option>
+                                        </select>
+                                        <input className="gi-input gi-input--flex" type="password" placeholder="Groq API key" value={apiKey} onChange={e => setApiKey(e.target.value)} />
+                                        <input className="gi-input gi-input--num" type="number" min={1} max={20} value={aiCount} onChange={e => setAiCount(Math.max(1, Math.min(20, Number(e.target.value))))} />
+                                        <button className="gi-btn gi-btn--ai" onClick={generateWithAI} disabled={aiLoading}>
+                                            {aiLoading ? 'Generating…' : `Generate ${aiCount}`}
+                                        </button>
+                                    </div>
+                                    {aiError && <p className="gi-error">{aiError}</p>}
+                                    <p className="gi-hint">Get a free key at <span className="gi-hint-strong">console.groq.com</span></p>
                                 </div>
                                 <div className="wm-list">
                                     {wordPairs.length === 0 && <p className="wm-empty">No pairs yet — add some above!</p>}

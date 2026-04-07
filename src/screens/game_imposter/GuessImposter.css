@@ -219,6 +219,16 @@
 .gi-input--flex { flex: 1; min-width: 0; }
 .gi-input--num { width: 60px; text-align: center; }
 
+/* Select dropdown specific styles */
+select.gi-input {
+    cursor: pointer;
+}
+
+select.gi-input option {
+    background: #1a1e2e;
+    color: #fff;
+}
+
 /* ─── Hints & errors ────────────────────────────────────────────────────────── */
 .gi-hint {
     color: rgba(255, 255, 255, 0.38);
@@ -1000,6 +1010,13 @@
     0%   { background: rgba(99,102,241,0.4); }
     60%  { background: rgba(99,102,241,0.12); }
     100% { background: transparent; }
+}
+.gi-clue-player {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+    min-width: 80px;
 }
 .gi-clue-chips {
     display: flex;

@@ -283,7 +283,10 @@ export default function Skribbl() {
     // ── Handle join-via-URL ──
     useEffect(() => {
         const code = searchParams.get('room');
-        if (code) setJoinCode(code.toUpperCase());
+        if (code) {
+            setJoinCode(code.toUpperCase());
+            setView('joining');
+        }
     }, [searchParams]);
 
     // ── Cleanup on unmount ──

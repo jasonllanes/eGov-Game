@@ -85,6 +85,14 @@
     border: 4px solid #a855f7; /* Purple/violet theme border */
 }
 
+.game-seven {
+    border: 4px solid #ec4899; /* Pink theme border */
+}
+
+.game-eight {
+    border: 4px solid #38bdf8; /* Cyan theme border */
+}
+
 /* Ninja button animation */
 .ninja-button-animation {
     position: absolute;

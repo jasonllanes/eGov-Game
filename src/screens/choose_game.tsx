@@ -45,6 +45,10 @@ const choose_game = () => {
         navigate('/eGov-Game/skribbl')
     }
 
+    const handleTypingRaceClick = () => {
+        navigate('/eGov-Game/typing-race')
+    }
+
     // const handlePdfCompressorClick = () => {
     //     navigate('/eGov-Game/pdf-compressor')
     // }
@@ -160,6 +164,19 @@ const choose_game = () => {
                         <span className="button-text">Game Seven</span>
                     </button>
                     <Button onClick={handleSkribblClick} text="eGov Skribbl" />
+                </div>
+
+                <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-eight"
+                        onClick={handleTypingRaceClick}
+                    >
+                        <div className="video-background hover:scale-[1.05] ease-out duration-500 flex items-center justify-center bg-[#0d1f2e]">
+                            <span style={{ fontSize: '3.5rem' }}>⌨️</span>
+                        </div>
+                        <span className="button-text">Game Eight</span>
+                    </button>
+                    <Button onClick={handleTypingRaceClick} text="Typing Race" />
                 </div>
 
                 {/* <div className="game-option flex flex-col gap-2">

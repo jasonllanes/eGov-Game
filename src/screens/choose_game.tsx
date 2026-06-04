@@ -34,6 +34,7 @@ const choose_game = () => {
     const handleSkribblClick = () => navigate('/eGov-Game/skribbl')
     const handlePdfCompressorClick = () => navigate('/eGov-Game/pdf-compressor')
     const handleCollageMakerClick = () => navigate('/eGov-Game/collage-maker')
+    const handleTypingRaceClick = () => navigate('/eGov-Game/typing-race')
 
     const handleUnlock = () => {
         if (codeInput === UNLOCK_CODE) {
@@ -188,6 +189,19 @@ const choose_game = () => {
                             </button>
                             <Button onClick={handleSkribblClick} text="eGov Skribbl" />
                         </div>
+
+                <div className="game-option flex flex-col gap-2">
+                    <button
+                        className="game-button game-eight"
+                        onClick={handleTypingRaceClick}
+                    >
+                        <div className="video-background hover:scale-[1.05] ease-out duration-500 flex items-center justify-center bg-[#0d1f2e]">
+                            <span style={{ fontSize: '3.5rem' }}>⌨️</span>
+                        </div>
+                        <span className="button-text">Game Eight</span>
+                    </button>
+                    <Button onClick={handleTypingRaceClick} text="Typing Race" />
+                </div>
 
                         {/* eGov Maze */}
                         <div className="game-option flex flex-col gap-2">

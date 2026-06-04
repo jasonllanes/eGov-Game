@@ -53,6 +53,10 @@ const Skribbl = lazy(() =>
   wait(1300).then(() => import("./screens/game_skribbl/Skribbl.tsx"))
 );
 
+const TypingRace = lazy(() =>
+  wait(1300).then(() => import("./screens/game_typing/TypingRace.tsx"))
+);
+
 const MainPage = lazy(() =>
   wait(2300).then(() => import("./screens/choose_game.tsx"))
 );
@@ -157,6 +161,15 @@ const router = createBrowserRouter([
     element: <>
       <Suspense fallback={<Loader />}>
         <CollageMaker />
+      </Suspense>
+    </>,
+  },
+
+  {
+    path: "/eGov-Game/typing-race",
+    element: <>
+      <Suspense fallback={<Loader />}>
+        <TypingRace />
       </Suspense>
     </>,
   },
